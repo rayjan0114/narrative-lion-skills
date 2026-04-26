@@ -1,6 +1,9 @@
 ---
-description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat, and export
-allowed-tools: Bash, Read, Write
+name: narrative-lion
+description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with notes, and export. Use when the user wants to "create a note from this video", "search my notes", "chat with my notes", or "export my notes".
+metadata:
+  author: rayjan0114
+  version: 0.1.0
 ---
 
 # Narrative Lion
