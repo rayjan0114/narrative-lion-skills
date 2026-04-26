@@ -28,3 +28,7 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 - **REST** `POST /api/export/request` — export notes as Markdown zip
 
 See the full API docs for request/response details, scopes, and curl examples.
+
+## Tips
+
+- When extracting an export zip, use `bsdtar -xf file.zip -C dest/`. Standard `unzip` mishandles non-ASCII filenames.
