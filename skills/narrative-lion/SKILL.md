@@ -31,4 +31,4 @@ See the full API docs for request/response details, scopes, and curl examples.
 
 ## Tips
 
-- When extracting an export zip, use `bsdtar -xf file.zip -C dest/`. Standard `unzip` mishandles non-ASCII filenames.
+- When extracting an export zip, use `bsdtar -xf notes.zip -C notes/`. Standard `unzip` mishandles non-ASCII filenames.
