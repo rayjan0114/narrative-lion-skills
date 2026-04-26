@@ -1,0 +1,9 @@
+{
+  "plugins": {
+    "narrative-lion": {
+      "name": "Narrative Lion Skills",
+      "description": "Generate notes from YouTube, search your knowledge base, chat with your notes, and export — all via Narrative Lion API.",
+      "source": "."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "narrative-lion",
+  "version": "0.1.0",
+  "description": "Skills for working with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with your notes, and export.",
+  "skills": true
+}
