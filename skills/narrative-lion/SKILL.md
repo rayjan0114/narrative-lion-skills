@@ -22,8 +22,8 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 
 ## Endpoints
 
-- **GraphQL** `POST /graphql` — submit jobs, query notes, search, manage tags
-- **REST** `GET /api/notes/:id` — fetch a single note
+- **GraphQL** `POST /graphql` — submit jobs, query/update notes, search, manage tags
+- **REST** `GET /api/billing/usage` — check credit usage and limits
 - **REST** `POST /api/chat/stream` — SSE chat with your notes
 - **REST** `POST /api/export/request` — export notes as Markdown zip
 
