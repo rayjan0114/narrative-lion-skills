@@ -16,7 +16,7 @@ npx skills add rayjan0114/narrative-lion-skills
 2. Export it in your shell:
 
    ```bash
-   export NL_API_KEY=nlk_xxxxxxxx
+   export NLK_API_KEY=nlk_xxxxxxxx
    ```
 
 ## Usage
