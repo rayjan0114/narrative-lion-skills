@@ -20,11 +20,12 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 
 ## API Reference
 
-Before making any API call, fetch the full docs for endpoint details, request/response schemas, and curl examples:
+**MUST** `WebFetch https://narrativelion.com/docs` before your first API call in every conversation. Do NOT guess field names, argument names, or query names — the schema is only in the docs.
 
-```
-WebFetch https://narrativelion.com/docs
-```
+## Search behavior
+
+- `search(query)` is **semantic** — it matches note content/embeddings, not titles. The top result is likely correct even when the title doesn't contain your keywords. Always check the top results before concluding "not found".
+- `ftsSearch(query)` is **keyword** full-text search — use when you need exact term matching.
 
 ## Endpoints (quick reference)
 
