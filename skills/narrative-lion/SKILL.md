@@ -34,7 +34,6 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 - **REST** `POST /api/filmwork/director/generate-next` — batch-generate shot records from storyboard
 - **REST** `POST /api/filmwork/director/refine` — stream revised storyboard (SSE)
 - **REST** `POST /api/filmwork/director/refine-suggestions` — get AI suggestions for storyboard
-- **REST** `POST /api/filmwork/shots/edit` — AI shot editing (returns change diff)
 - **REST** `POST /api/threads/:threadId/active-note` — set active note on a chat thread
 
 ## Filmwork — Shot Production Pipeline
@@ -96,6 +95,5 @@ Step 2 is REQUIRED — generate-next fails without `metadata.filmDirector`. See 
 - `noteTypeScope: ["filmwork"]` in chat payload routes to filmwork edit. Without it → general chat.
 - Thread must have active note set before filmwork chat editing: `POST /threads/:threadId/active-note`.
 - Film Director chat payload needs flat fields: `filmDirectorVideoType`, `filmDirectorTargetDurationSec`, `filmDirectorAspectRatio` (not a nested object).
-- `POST /filmwork/shots/edit` with `shotLabel` scopes to one shot; omit for multi-shot.
 - `generate-next` requires `metadata.filmDirector` — without it: "Film Director setup not found".
 - `INVALID_STORYBOARD_FORMAT` = no parseable `**01A** (Ns) — Title` line found.
