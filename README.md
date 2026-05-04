@@ -40,6 +40,13 @@ The skill includes full support for Narrative Lion's Filmwork pipeline:
 
 See the [full docs](https://narrativelion.com/docs#filmwork-pipeline) for details.
 
+## Skill Authoring Guidelines
+
+- Skill files should focus on **best practices** and **high-level architecture** — gotchas, common mistakes, decision points.
+- Keep everything else minimal. Full schema details (field names, argument types, payloads) belong in the [API docs](https://narrativelion.com/docs), not in skill files.
+- Include just enough operation signatures for the agent to make API calls without fetching the docs for common tasks.
+- **MUST WebFetch docs** is intentional: because the skill only covers best practices and high-level architecture, the agent needs to fetch the full API docs (`/docs`, `/docs/filmwork`, etc.) at least once per conversation to get exact field names, argument types, and payloads before making API calls.
+
 ## Reference
 
 Full API docs: https://narrativelion.com/docs
