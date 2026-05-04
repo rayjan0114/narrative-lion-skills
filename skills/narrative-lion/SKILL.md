@@ -31,7 +31,6 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 - **REST** `POST /api/podcast/edit` — AI-edit podcast script
 - **REST** `POST /api/podcast/sts` — speech-to-speech
 - **REST** `POST /api/filmwork/director/persist` — persist storyboard + create filmwork note
-- **REST** `POST /api/filmwork/director/generate-next` — batch-generate shot records from storyboard
 - **REST** `POST /api/filmwork/director/refine` — stream revised storyboard (SSE)
 - **REST** `POST /api/filmwork/director/refine-suggestions` — AI suggestions for storyboard
 - **REST** `POST /api/threads/:threadId/active-note` — set active note on a chat thread
@@ -64,15 +63,17 @@ Two-level folder tree for organizing notes. Requires `notes:write` scope.
 
 Two paths to create a project:
 
-- **Path A: Film Director (AI-guided)** — chat stream with `activeTool: "film_director"` → persist → generate shots. Costs 2-3 credits.
-- **Path B: Direct creation** — `createGeneralNote(noteType: "filmwork")` → set metadata → generate-next. Costs 0 + 1 credit/batch.
+- **Path A: Film Director (AI-guided)** — chat stream with `activeTool: "film_director"` → persist. Costs 2-3 credits.
+- **Path B: Direct creation (recommended for agents)** — `createGeneralNote(noteType: "filmwork")` → `createFilmworkShot()` per shot. **0 credits.**
+
+Path B workflow:
+1. `createGeneralNote(noteType: "filmwork", content: storyboard_md)` — format gate validates labels (0 credits if valid).
+2. `createFilmworkShot(noteId, shotId, scene, sequenceOrder, targetDurationSec, directionJson, promptsJson, modelConfigJson)` — call once per shot with your own structured data.
 
 Key gotchas:
-- `generate-next` requires `metadata.filmDirector` — without it: "Film Director setup not found".
-- `generate-next` batchSize defaults to 5, max 10. Call repeatedly until `remainingShots` is 0.
 - `INVALID_STORYBOARD_FORMAT` = no parseable `**01A** (Ns) — Title` line found.
 - Film Director chat needs flat fields: `filmDirectorVideoType`, `filmDirectorTargetDurationSec`, `filmDirectorAspectRatio` (not a nested object).
-- See `/docs/filmwork` for storyboard label format, direct creation workflow, and full payload details.
+- See `/docs/filmwork` for storyboard label format, field schemas, and full payload details.
 
 ### Podcast
 
