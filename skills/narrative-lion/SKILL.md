@@ -69,7 +69,7 @@ Two paths to create a project:
 
 Key gotchas:
 - `generate-next` requires `metadata.filmDirector` — without it: "Film Director setup not found".
-- `generate-next` processes up to **10 shots per call** (batchSize capped at 10). Call repeatedly until `remainingShots` is 0.
+- `generate-next` batchSize defaults to 5, max 10. Call repeatedly until `remainingShots` is 0.
 - `INVALID_STORYBOARD_FORMAT` = no parseable `**01A** (Ns) — Title` line found.
 - Film Director chat needs flat fields: `filmDirectorVideoType`, `filmDirectorTargetDurationSec`, `filmDirectorAspectRatio` (not a nested object).
 - See `/docs/filmwork` for storyboard label format, direct creation workflow, and full payload details.
