@@ -263,19 +263,23 @@ addInsight(noteId: "...", category: "prompt",
 
 ## HTTP Client
 
-The API enforces bot protection. Requests with automated or missing `User-Agent` headers receive `403 Forbidden`.
+The API enforces bot protection with two sequential checks:
 
-**curl** works out of the box (its default UA `curl/X.Y.Z` is not flagged). Prefer curl for API calls.
+1. **User-Agent** — automated/default UAs are blocked (`403 error code: 1010`). Set any descriptive non-default string.
+2. **Origin / Auth** — requests without `Authorization` header also need `Origin: https://narrativelion.com`. API key auth bypasses this check.
 
-**Python** — always set a descriptive `User-Agent`. The default UAs for `urllib` (`Python-urllib/3.x`) and `requests` (`python-requests/2.x`) are both rejected.
+**curl** with an API key works without extra headers (its default UA `curl/X.Y.Z` passes, and the key bypasses origin check).
+
+**Python** — always set a custom `User-Agent`. Default UAs for `urllib` (`Python-urllib/3.x`) and `requests` (`python-requests/2.x`) are both rejected.
 
 ```python
 headers = {
     "Authorization": "Bearer nlk_your_key",
     "Content-Type": "application/json",
     "User-Agent": "NarrativeLion-Agent/1.0",
-    "Accept": "application/json",
 }
 ```
 
-If you get a `403` from any HTTP library, the first thing to check is your `User-Agent` header.
+If you get `403`:
+- `error code: 1010` → fix your `User-Agent`
+- `Invalid origin` → add `Authorization` header or `Origin: https://narrativelion.com`
