@@ -263,4 +263,19 @@ addInsight(noteId: "...", category: "prompt",
 
 ## HTTP Client
 
-Prefer `curl` for API calls.
+The API enforces bot protection. Requests with automated or missing `User-Agent` headers receive `403 Forbidden`.
+
+**curl** works out of the box (its default UA `curl/X.Y.Z` is not flagged). Prefer curl for API calls.
+
+**Python** — always set a descriptive `User-Agent`. The default UAs for `urllib` (`Python-urllib/3.x`) and `requests` (`python-requests/2.x`) are both rejected.
+
+```python
+headers = {
+    "Authorization": "Bearer nlk_your_key",
+    "Content-Type": "application/json",
+    "User-Agent": "NarrativeLion-Agent/1.0",
+    "Accept": "application/json",
+}
+```
+
+If you get a `403` from any HTTP library, the first thing to check is your `User-Agent` header.
