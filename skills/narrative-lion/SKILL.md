@@ -3,7 +3,7 @@ name: narrative-lion
 description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with notes, produce AI video shot pipelines, and export. Use when the user wants to "create a note from this video", "search my notes", "chat with my notes", "create a filmwork project", or "export my notes".
 metadata:
   author: rayjan0114
-  version: 0.6.0
+  version: 0.7.0
 ---
 
 # Narrative Lion
@@ -85,6 +85,21 @@ Full field schemas at `/docs/filmwork`.
 
 Rolls and assets have an `agentHold` boolean. **If `agentHold: true`, do not touch that item** — skip it. Always include `agentHold` when querying rolls/assets.
 
+### Scanning Project State
+
+Use `assetCounts` and `rollSummary` for compact overview — avoids pulling full asset/roll objects into context:
+
+```graphql
+{ filmworkOverview(noteId: "...") { shots {
+    shotId status
+    assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo total }
+    rollSummary { total pending approved rejected bestScore goldenRollId }
+    preflightStatus { ready }
+} } }
+```
+
+Drill into full `assets`/`rolls` only when you need IDs for mutations (e.g. `setGoldenAsset`, `deleteRoll`).
+
 ### Before Starting Work on a Shot
 
 **Always check existing knowledge first:**
@@ -107,6 +122,7 @@ Prepare → Preflight → Generate → Review → Act on verdict
 #### Prepare
 
 1. Upload reference assets: `requestUploadUrl(shotId, assetType, filename)` → PUT file → `confirmAssetUpload(...)`.
+   **PUT requires the same `Authorization: Bearer` header as GraphQL calls** (not a presigned URL).
 2. Set direction, prompt, model config via `createFilmworkShot` or `updateFilmworkShot`.
 3. For dialogue shots: upload `dialogue` or `padded_audio` asset.
 
@@ -260,6 +276,17 @@ addInsight(noteId: "...", category: "prompt",
 - Props missing from output = they weren't in the input frames. Fix the setup, not the prompt.
 - Mouth never moves for scripted line = expected for models without native audio. Lip-sync is a post step. Don't penalize.
 - Mouth moves continuously when it should be still = model failure ("liveliness bias"). Penalize under expression.
+
+## JSON Field Quick Reference
+
+Several mutation fields accept stringified JSON. Common gotchas:
+
+- **`dialogue`**: must be a JSON **array** `[{speaker, text, type, emotion?}]`, not a string. Empty = `[]`.
+- **`blockerJson`**: single **object** `{description, action, createdAt}`, not an array.
+- **`promptsJson`**: array `[{version (Int), body, isActive (Bool), ...}]`. Exactly one entry should have `isActive: true`.
+- **`seed`** and **`promptVersion`** on `confirmRollUpload`: both are **`Int`**, not `String`.
+
+Full schemas with examples at `/docs/filmwork` → "JSON field schemas" section.
 
 ## HTTP Client
 
