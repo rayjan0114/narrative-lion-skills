@@ -263,23 +263,6 @@ addInsight(noteId: "...", category: "prompt",
 
 ## HTTP Client
 
-The API enforces bot protection with two sequential checks:
-
-1. **User-Agent** — automated/default UAs are blocked (`403 error code: 1010`). Set any descriptive non-default string.
-2. **Origin / Auth** — requests without `Authorization` header also need `Origin: https://narrativelion.com`. API key auth bypasses this check.
-
-**curl** with an API key works without extra headers (its default UA `curl/X.Y.Z` passes, and the key bypasses origin check).
-
-**Python** — always set a custom `User-Agent`. Default UAs for `urllib` (`Python-urllib/3.x`) and `requests` (`python-requests/2.x`) are both rejected.
-
-```python
-headers = {
-    "Authorization": "Bearer nlk_your_key",
-    "Content-Type": "application/json",
-    "User-Agent": "NarrativeLion-Agent/1.0",
-}
-```
-
-If you get `403`:
-- `error code: 1010` → fix your `User-Agent`
-- `Invalid origin` → add `Authorization` header or `Origin: https://narrativelion.com`
+- **curl** with an API key works out of the box.
+- **Python / other clients**: set a custom `User-Agent` (default `Python-urllib` / `python-requests` UAs are blocked → `403`).
+- If you get `403 Invalid origin` without an API key, add `Origin: https://narrativelion.com`.
