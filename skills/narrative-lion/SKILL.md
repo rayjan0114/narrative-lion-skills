@@ -157,6 +157,18 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py insights <noteId>
 
 5 seconds of reading prevents 5 minutes of repeating past mistakes.
 
+### Before Writing or Updating Prompts
+
+Spawn a sub-agent (via the Agent tool) to review relevant insights before writing or modifying a video prompt. This avoids loading raw insight data into the main context.
+
+Sub-agent instructions:
+1. Run `nl.py insights <noteId> --category prompt --json`
+2. Read through all returned insights
+3. Return a short bullet list of insights relevant to the current shot's content (camera movement, character action, scene type)
+4. If no insights are relevant, return "No relevant prompt insights found"
+
+Do the same with `--category model` if switching models or debugging a failed roll.
+
 ### The Production Loop
 
 ```
@@ -237,7 +249,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decision <noteId> --shot <shotUUID> 
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py verdict <rollId> rejected
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decision <noteId> --shot <shotUUID> --action plan_revision --reason "face morphing in last 2s" --outcome "adding negative prompt for morphing"
 ```
-Then fix the prompt and re-roll. **Never re-roll without changing something.**
+Then review insights (see "Before Writing or Updating Prompts" below), fix the prompt, and re-roll. **Never re-roll without changing something.**
 
 **< 30 — Reject & debug. Do not re-roll.** Follow playbook below.
 
