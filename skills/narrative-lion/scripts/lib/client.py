@@ -1,10 +1,14 @@
 """Narrative Lion API client — stdlib only (urllib + json)."""
 
+from __future__ import annotations
+
 import json
 import os
 import sys
+import uuid
 import urllib.request
 import urllib.error
+from typing import Generator
 
 BASE_URL = "https://narrativelion.com"
 USER_AGENT = "NarrativeLion-CLI/1.0"
@@ -132,3 +136,78 @@ def upload_binary(url: str, file_path: str, content_type: str = "application/oct
     except urllib.error.HTTPError as e:
         print(f"Error: HTTP {e.code} uploading to {url}", file=sys.stderr)
         sys.exit(1)
+
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def set_active_note(thread_id: str, note_id: str) -> None:
+    """POST /api/threads/:threadId/active-note."""
+    data = json.dumps({"noteId": note_id}).encode()
+    req = urllib.request.Request(
+        f"{BASE_URL}/api/threads/{thread_id}/active-note",
+        data=data,
+        headers=_headers(),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            resp.read()
+    except urllib.error.HTTPError as e:
+        body_text = e.read().decode() if e.readable() else ""
+        print(f"Error: HTTP {e.code} setting active note", file=sys.stderr)
+        if body_text:
+            print(f"  {body_text[:500]}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Error: Network error — {e.reason}", file=sys.stderr)
+        sys.exit(1)
+
+
+def stream_sse(path: str, body: dict) -> Generator[dict, None, None]:
+    """POST to an SSE endpoint. Yields parsed event dicts."""
+    data = json.dumps(body).encode()
+    headers = _headers()
+    headers["Accept"] = "text/event-stream"
+
+    req = urllib.request.Request(
+        f"{BASE_URL}{path}",
+        data=data,
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        resp = urllib.request.urlopen(req)
+    except urllib.error.HTTPError as e:
+        body_text = e.read().decode() if e.readable() else ""
+        print(f"Error: HTTP {e.code} from {path}", file=sys.stderr)
+        if body_text:
+            try:
+                err = json.loads(body_text)
+                msg = err.get("error", err.get("message", body_text[:200]))
+                code = err.get("code", "")
+                prefix = f"[{code}] " if code else ""
+                print(f"  {prefix}{msg}", file=sys.stderr)
+            except json.JSONDecodeError:
+                print(f"  {body_text[:500]}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Error: Network error — {e.reason}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        buffer = ""
+        for raw_line in resp:
+            line = raw_line.decode("utf-8", errors="replace").rstrip("\n\r")
+            if line.startswith("data: "):
+                buffer = line[6:]
+            elif line == "" and buffer:
+                try:
+                    yield json.loads(buffer)
+                except json.JSONDecodeError:
+                    pass
+                buffer = ""
+    finally:
+        resp.close()

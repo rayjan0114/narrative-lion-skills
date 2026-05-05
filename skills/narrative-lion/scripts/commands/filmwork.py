@@ -1,5 +1,7 @@
 """Filmwork commands: overview, shot, preflight, upload, score, verdict, etc."""
 
+from __future__ import annotations
+
 import json
 import mimetypes
 import os

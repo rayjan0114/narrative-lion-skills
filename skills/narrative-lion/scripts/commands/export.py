@@ -1,5 +1,7 @@
 """Export command."""
 
+from __future__ import annotations
+
 from lib.client import rest_post
 from lib.formatters import as_json
 

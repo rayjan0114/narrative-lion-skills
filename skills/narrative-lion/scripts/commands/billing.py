@@ -1,5 +1,7 @@
 """Billing command: usage."""
 
+from __future__ import annotations
+
 from lib.client import rest_get
 from lib.formatters import as_json
 

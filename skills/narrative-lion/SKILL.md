@@ -36,6 +36,17 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 | `nl.py export <noteId> [noteId2 ...]` | Export as Markdown zip |
 | `nl.py usage` | Credit usage |
 
+### Chat (SSE)
+
+| Command | Description |
+|---|---|
+| `nl.py chat <text> [--thread ID] [--note noteId]` | General Q&A. `--note` sets context. |
+| `nl.py filmwork-edit <noteId> <instruction> [--thread ID]` | Edit filmwork shots via natural language |
+| `nl.py director <concept> [--type T] [--duration N] [--aspect R] [--style S]` | Film Director — generate storyboard |
+| `nl.py director-persist <threadId> --storyboard <md> --instruction <text>` | Persist storyboard as filmwork note |
+| `nl.py director-refine --storyboard <md> --instruction <text> --prompt <refinement>` | Stream revised storyboard |
+| `nl.py director-suggestions --storyboard <md> --instruction <text>` | Get AI suggestions for refinement |
+
 ### Filmwork
 
 | Command | Description |
@@ -70,15 +81,15 @@ All commands support `--json` for raw JSON output.
 Two-level folder tree. `notes list --collection ID` scopes by collection.
 `notes list --uncategorized` returns notes not in any collection.
 
-### Chat / SSE (not yet in CLI)
+### Chat / SSE
 
-For chat/SSE, use curl directly:
-- Event type: `"user_text"` (not "chat"). Payload field: `"text"` (not "message").
-- Fresh UUID for `actionId` every time — it's the idempotency key.
-- `noteTypeScope: ["filmwork"]` routes to filmwork edit. Without it → general chat.
-- Set active note on thread before filmwork editing.
+Three chat commands for three intents:
+- `chat` — general Q&A about notes
+- `filmwork-edit` — modify filmwork shots via natural language (auto-sets active note, backend routes to filmwork_edit skill)
+- `director` — Film Director generates storyboard from concept
 
-Full REST endpoint docs: `WebFetch https://narrativelion.com/docs`
+Threading: omit `--thread` for a new conversation, pass `--thread <id>` to continue.
+All streaming is handled internally — no need to know SSE protocol.
 
 ### Podcast
 
@@ -95,11 +106,15 @@ Full REST endpoint docs: `WebFetch https://narrativelion.com/docs`
 | **A: Film Director** | Have concept, need storyboard | 1-2 credits |
 | **B: Direct creation** | Have formatted storyboard | 0 credits |
 
-**Path A:** Chat with `activeTool: "film_director"` → persist via `/api/filmwork/director/persist`.
+**Path A:**
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director "concept description" --type animate --duration 30 --aspect 16:9
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director-persist <threadId> --storyboard <md> --instruction "concept" --type animate --duration 30 --aspect 16:9
+```
+
 **Path B:** `notes create --type filmwork --content <storyboard_md>` then create shots via GraphQL.
 
 Labels must match `**01A** (Ns) — Title`. Invalid → `INVALID_STORYBOARD_FORMAT`.
-Full field schemas: `WebFetch https://narrativelion.com/docs/filmwork`
 
 ### Agent Hold
 

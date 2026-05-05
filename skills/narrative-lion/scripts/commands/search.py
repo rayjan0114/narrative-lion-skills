@@ -1,5 +1,7 @@
 """Search commands: search, fts."""
 
+from __future__ import annotations
+
 from lib.client import graphql
 from lib.formatters import as_json, table
 

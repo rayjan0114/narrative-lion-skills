@@ -7,7 +7,7 @@ import os
 # Add scripts/ to path so lib/ and commands/ are importable
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from commands import search, notes, billing, export, filmwork
+from commands import search, notes, billing, export, filmwork, chat
 
 HELP = """\
 Usage: nl.py <command> [args...] [--json]
@@ -20,6 +20,20 @@ General:
   notes create --type T --content C       Create note
   export <noteId> [noteId2 ...]           Export notes as zip
   usage                                   Credit usage
+
+Chat (SSE):
+  chat <text> [--thread ID] [--note noteId]
+      General Q&A. --note sets active note for context.
+  filmwork-edit <noteId> <instruction> [--thread ID]
+      Edit filmwork shots via natural language.
+  director <concept> [--type T] [--duration N] [--aspect R] [--style S] [--thread ID]
+      Film Director — generate storyboard from concept.
+  director-persist <threadId> --storyboard <md> --instruction <text> [--immediate]
+      Persist storyboard as filmwork note.
+  director-refine --storyboard <md> --instruction <text> --prompt <refinement>
+      Stream revised storyboard.
+  director-suggestions --storyboard <md> --instruction <text>
+      Get AI suggestions for storyboard.
 
 Filmwork:
   overview <noteId>                       Project overview
@@ -45,6 +59,12 @@ COMMANDS = {
     "fts": search.fts,
     "usage": billing.usage,
     "export": export.export_notes,
+    "chat": chat.chat,
+    "filmwork-edit": chat.filmwork_edit,
+    "director": chat.director,
+    "director-persist": chat.director_persist,
+    "director-refine": chat.director_refine,
+    "director-suggestions": chat.director_suggestions,
     "overview": filmwork.overview,
     "shot": filmwork.shot,
     "preflight": filmwork.preflight,
