@@ -60,7 +60,7 @@ The skill includes full support for Narrative Lion's Filmwork pipeline:
 
 - **Film Director**: AI-guided storyboard generation from a concept
 - **Direct creation**: Zero-credit path for pre-written storyboards
-- **Shot editing**: Modify direction, prompts, dialogue via natural language
+- **Shot editing**: Modify direction, prompts, dialogue, model config via `shot-update`
 - **Refinement**: AI suggestions and streaming storyboard revisions
 - **Provenance**: Track how every asset was made, with full lineage DAG
 

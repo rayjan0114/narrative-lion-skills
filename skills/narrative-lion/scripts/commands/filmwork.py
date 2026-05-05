@@ -426,10 +426,12 @@ def golden_roll(args: list[str], json_mode: bool = False) -> None:
 
 def shot_update(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py shot-update <shotId> [--status S] [--blocker JSON]"); return
+        print("Usage: nl.py shot-update <shotId> [--status S] [--blocker JSON] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--relations JSON] [--duration N]"); return
 
     shot_id = args[0]
     status = None; blocker = None
+    prompts = None; dialogue = None; direction = None
+    model_config = None; relations = None; duration = None
 
     i = 1
     while i < len(args):
@@ -437,8 +439,22 @@ def shot_update(args: list[str], json_mode: bool = False) -> None:
             status = args[i + 1]; i += 2
         elif args[i] == "--blocker" and i + 1 < len(args):
             blocker = args[i + 1]; i += 2
+        elif args[i] == "--prompts" and i + 1 < len(args):
+            prompts = args[i + 1]; i += 2
+        elif args[i] == "--dialogue" and i + 1 < len(args):
+            dialogue = args[i + 1]; i += 2
+        elif args[i] == "--direction" and i + 1 < len(args):
+            direction = args[i + 1]; i += 2
+        elif args[i] == "--model-config" and i + 1 < len(args):
+            model_config = args[i + 1]; i += 2
+        elif args[i] == "--relations" and i + 1 < len(args):
+            relations = args[i + 1]; i += 2
+        elif args[i] == "--duration" and i + 1 < len(args):
+            duration = float(args[i + 1]); i += 2
         else:
             i += 1
+
+    has_shot_fields = any(v is not None for v in [prompts, dialogue, direction, model_config, relations, duration])
 
     if status:
         gql = """
@@ -453,11 +469,41 @@ def shot_update(args: list[str], json_mode: bool = False) -> None:
         data = graphql(gql, variables)
         result = data.get("updateShotStatus", {})
 
-        if json_mode:
+        if json_mode and not has_shot_fields:
             print(as_json(result)); return
         print(f"  Shot {result.get('shotId')}: {result.get('status')}")
-    else:
-        print("Error: At least --status is required", file=sys.stderr)
+
+    if has_shot_fields:
+        gql = """
+        mutation($shotId: String!, $dialogue: String, $directionJson: String, $promptsJson: String, $modelConfigJson: String, $relationsJson: String, $targetDurationSec: Float) {
+          updateFilmworkShot(shotId: $shotId, dialogue: $dialogue, directionJson: $directionJson, promptsJson: $promptsJson, modelConfigJson: $modelConfigJson, relationsJson: $relationsJson, targetDurationSec: $targetDurationSec) {
+            id shotId status targetDurationSec
+          }
+        }"""
+        variables = {"shotId": shot_id}
+        if prompts is not None:
+            variables["promptsJson"] = prompts
+        if dialogue is not None:
+            variables["dialogue"] = dialogue
+        if direction is not None:
+            variables["directionJson"] = direction
+        if model_config is not None:
+            variables["modelConfigJson"] = model_config
+        if relations is not None:
+            variables["relationsJson"] = relations
+        if duration is not None:
+            variables["targetDurationSec"] = duration
+        data = graphql(gql, variables)
+        result = data.get("updateFilmworkShot", {})
+
+        if json_mode:
+            print(as_json(result)); return
+
+        updated = [k for k in ["prompts", "dialogue", "direction", "model-config", "relations", "duration"] if locals().get(k.replace("-", "_")) is not None]
+        print(f"  Shot {result.get('shotId')}: updated {', '.join(updated)}")
+
+    if not status and not has_shot_fields:
+        print("Error: Provide at least one flag (--status, --prompts, --dialogue, --direction, --model-config, --relations, --duration)", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

@@ -38,16 +38,12 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py export <noteId> [noteId2 ...]` | Export as Markdown zip |
 | `nl.py usage` | Credit usage |
 
-### Chat (SSE)
+### Film Director
 
 | Command | Description |
 |---|---|
-| `nl.py chat <text> [--thread ID] [--note noteId]` | General Q&A. `--note` sets context. |
-| `nl.py filmwork-edit <noteId> <instruction> [--thread ID]` | Edit filmwork shots via natural language |
-| `nl.py director <concept> [--type T] [--duration N] [--aspect R] [--style S]` | Film Director — generate storyboard |
-| `nl.py director-persist <threadId> --storyboard <md> --instruction <text>` | Persist storyboard as filmwork note |
-| `nl.py director-refine --storyboard <md> --instruction <text> --prompt <refinement>` | Stream revised storyboard |
-| `nl.py director-suggestions --storyboard <md> --instruction <text>` | Get AI suggestions for refinement |
+| `nl.py director <concept> [--type T] [--duration N] [--aspect R] [--style S]` | Generate storyboard from concept **(LLM cost: 1-2 credits — only use when user explicitly requests)** |
+| `nl.py director-persist <threadId> --storyboard <md> --instruction <text>` | Persist storyboard as filmwork note (no LLM cost) |
 
 ### Filmwork
 
@@ -58,7 +54,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py preflight <noteId> <label>` | Preflight check only |
 | `nl.py upload <shotId> <assetType> <file> [--label L] [--method M --model M --prompt P --user-note N --parent JSON]` | Upload asset (handles 3-step flow, optional provenance) |
 | `nl.py upload-roll <shotId> <file> [--seed N --model M --prompt-version N]` | Upload roll video |
-| `nl.py shot-update <shotId> --status S [--blocker JSON]` | Update shot status |
+| `nl.py shot-update <shotId> [--status S] [--blocker JSON] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--relations JSON] [--duration N]` | Update shot status and/or fields |
 | `nl.py score <rollId> --face N --expr N --motion N --stability N --style N` | Score a roll (auto-computes weighted total) |
 | `nl.py verdict <rollId> <approved\|rejected>` | Set roll verdict |
 | `nl.py golden-roll <rollId>` | Set golden roll |
@@ -91,13 +87,11 @@ Two-level folder tree. `notes list --collection ID` scopes by collection.
 
 ### Chat / SSE
 
-Three chat commands for three intents:
-- `chat` — general Q&A about notes
-- `filmwork-edit` — modify filmwork shots via natural language (auto-sets active note, backend routes to filmwork_edit skill)
-- `director` — Film Director generates storyboard from concept
+### Film Director Notes
+
+`director` has LLM cost (1-2 credits). Only use when the user explicitly asks to generate a new storyboard. To edit existing shot fields (prompts, dialogue, direction, model config), use `shot-update` instead — zero LLM cost.
 
 Threading: omit `--thread` for a new conversation, pass `--thread <id>` to continue.
-All streaming is handled internally — no need to know SSE protocol.
 
 ### Podcast
 
