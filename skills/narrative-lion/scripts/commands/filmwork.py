@@ -220,10 +220,33 @@ def upload_asset(args: list[str], json_mode: bool = False) -> None:
     print(f"  Uploading {filename}...")
     upload_binary(upload_url, file_path, content_type)
 
+    # Parse optional provenance flags
+    provenance_json = None
+    prov_parts: dict = {}
+    for flag, key in [("--method", "method"), ("--model", "model"), ("--prompt", "prompt"),
+                      ("--user-note", "userNote"), ("--model-params", "modelParamsJson")]:
+        if flag in args:
+            idx = args.index(flag)
+            if idx + 1 < len(args):
+                prov_parts[key] = args[idx + 1]
+    parent_flags = [i for i, a in enumerate(args) if a == "--parent"]
+    if parent_flags:
+        parents = []
+        for idx in parent_flags:
+            if idx + 1 < len(args):
+                parents.append(json.loads(args[idx + 1]))
+        prov_parts["parents"] = parents
+    if "--provenance" in args:
+        idx = args.index("--provenance")
+        if idx + 1 < len(args):
+            provenance_json = args[idx + 1]
+    elif prov_parts.get("method"):
+        provenance_json = json.dumps(prov_parts)
+
     # Step 3: Confirm
     gql_confirm = """
-    mutation($shotId: String!, $assetKey: String!, $assetType: String!, $label: String) {
-      confirmAssetUpload(shotId: $shotId, assetKey: $assetKey, assetType: $assetType, label: $label) {
+    mutation($shotId: String!, $assetKey: String!, $assetType: String!, $label: String, $provenanceJson: String) {
+      confirmAssetUpload(shotId: $shotId, assetKey: $assetKey, assetType: $assetType, label: $label, provenanceJson: $provenanceJson) {
         id url status version isGolden
       }
     }"""
@@ -234,6 +257,8 @@ def upload_asset(args: list[str], json_mode: bool = False) -> None:
     }
     if label is not None:
         confirm_vars["label"] = label
+    if provenance_json is not None:
+        confirm_vars["provenanceJson"] = provenance_json
 
     data = graphql(gql_confirm, confirm_vars)
     asset = data.get("confirmAssetUpload", {})
@@ -590,3 +615,171 @@ def list_insights(args: list[str], json_mode: bool = False) -> None:
         print(f"  [{ins.get('category','')}] {ins.get('title','')}")
         if ins.get("detail"):
             print(f"    {ins['detail'][:120]}")
+
+
+# ---------------------------------------------------------------------------
+# Provenance
+# ---------------------------------------------------------------------------
+
+def provenance(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py provenance <assetId>"); return
+
+    asset_id = args[0]
+    gql = """
+    query($assetId: String!) {
+      assetProvenance(assetId: $assetId) {
+        assetId method model prompt modelParamsJson userNote createdAt
+        parents { id parentAssetId parentExternalRef role createdAt }
+      }
+    }"""
+    data = graphql(gql, {"assetId": asset_id})
+    prov = data.get("assetProvenance")
+
+    if json_mode:
+        print(as_json(prov)); return
+
+    if not prov:
+        print("  No provenance recorded for this asset."); return
+
+    print(f"  Asset:   {prov['assetId']}")
+    print(f"  Method:  {prov['method']}")
+    if prov.get("model"):
+        print(f"  Model:   {prov['model']}")
+    if prov.get("prompt"):
+        prompt_preview = prov["prompt"][:200] + ("..." if len(prov["prompt"]) > 200 else "")
+        print(f"  Prompt:  {prompt_preview}")
+    if prov.get("modelParamsJson"):
+        print(f"  Params:  {prov['modelParamsJson']}")
+    if prov.get("userNote"):
+        print(f"  Note:    {prov['userNote']}")
+    parents = prov.get("parents", [])
+    if parents:
+        print(f"  Parents ({len(parents)}):")
+        for p in parents:
+            if p.get("parentAssetId"):
+                print(f"    [{p['role']}] asset:{p['parentAssetId']}")
+            else:
+                print(f"    [{p['role']}] ext:{p.get('parentExternalRef', '?')}")
+
+
+def lineage(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py lineage <assetId> [--depth N]"); return
+
+    asset_id = args[0]
+    max_depth = 5
+    if "--depth" in args:
+        idx = args.index("--depth")
+        if idx + 1 < len(args):
+            max_depth = int(args[idx + 1])
+
+    gql = """
+    query($assetId: String!, $maxDepth: Int) {
+      assetLineageTree(assetId: $assetId, maxDepth: $maxDepth) {
+        id parentAssetId parentExternalRef role createdAt
+      }
+    }"""
+    data = graphql(gql, {"assetId": asset_id, "maxDepth": max_depth})
+    edges = data.get("assetLineageTree", [])
+
+    if json_mode:
+        print(as_json(edges)); return
+
+    if not edges:
+        print("  No lineage edges found."); return
+
+    print(f"  Lineage edges ({len(edges)}):")
+    for e in edges:
+        if e.get("parentAssetId"):
+            print(f"    [{e['role']}] asset:{e['parentAssetId']}")
+        else:
+            print(f"    [{e['role']}] ext:{e.get('parentExternalRef', '?')}")
+
+
+def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py roll-snapshot <rollId>"); return
+
+    roll_id = args[0]
+    gql = """
+    query($rollId: String!) {
+      rollInputSnapshot(rollId: $rollId) {
+        assetId assetType version
+      }
+    }"""
+    data = graphql(gql, {"rollId": roll_id})
+    snapshots = data.get("rollInputSnapshot", [])
+
+    if json_mode:
+        print(as_json(snapshots)); return
+
+    if not snapshots:
+        print("  No input snapshot recorded for this roll."); return
+
+    print(f"  Input assets at generation time:")
+    for s in snapshots:
+        asset_ref = f" (id:{s['assetId']})" if s.get("assetId") else " (deleted)"
+        print(f"    {s['assetType']} v{s['version']}{asset_ref}")
+
+
+def set_provenance(args: list[str], json_mode: bool = False) -> None:
+    asset_id = None
+    method = None; model = None; prompt = None
+    model_params = None; user_note = None
+    parents_raw: list[str] = []
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--method" and i + 1 < len(args):
+            method = args[i + 1]; i += 2
+        elif args[i] == "--model" and i + 1 < len(args):
+            model = args[i + 1]; i += 2
+        elif args[i] == "--prompt" and i + 1 < len(args):
+            prompt = args[i + 1]; i += 2
+        elif args[i] == "--model-params" and i + 1 < len(args):
+            model_params = args[i + 1]; i += 2
+        elif args[i] == "--user-note" and i + 1 < len(args):
+            user_note = args[i + 1]; i += 2
+        elif args[i] == "--parent" and i + 1 < len(args):
+            parents_raw.append(args[i + 1]); i += 2
+        elif not asset_id:
+            asset_id = args[i]; i += 1
+        else:
+            i += 1
+
+    if not asset_id or not method:
+        print("Usage: nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--user-note N] [--parent JSON ...]"); return
+
+    gql = """
+    mutation($assetId: String!, $method: String!, $model: String, $prompt: String, $modelParamsJson: String, $userNote: String, $parents: [ProvenanceInputArg!]) {
+      setAssetProvenance(assetId: $assetId, method: $method, model: $model, prompt: $prompt, modelParamsJson: $modelParamsJson, userNote: $userNote, parents: $parents) {
+        assetId method model createdAt
+        parents { parentAssetId parentExternalRef role }
+      }
+    }"""
+    variables: dict = {"assetId": asset_id, "method": method}
+    if model:
+        variables["model"] = model
+    if prompt:
+        variables["prompt"] = prompt
+    if model_params:
+        variables["modelParamsJson"] = model_params
+    if user_note:
+        variables["userNote"] = user_note
+    if parents_raw:
+        variables["parents"] = [json.loads(p) for p in parents_raw]
+
+    data = graphql(gql, variables)
+    result = data.get("setAssetProvenance", {})
+
+    if json_mode:
+        print(as_json(result)); return
+
+    parents = result.get("parents", [])
+    print(f"  Provenance set: {result.get('method')} ({result.get('model', 'no model')})")
+    if parents:
+        print(f"  Parents: {len(parents)}")
+        for p in parents:
+            ref = p.get("parentAssetId") or p.get("parentExternalRef", "?")
+            print(f"    [{p['role']}] {ref}")

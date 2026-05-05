@@ -50,6 +50,12 @@ Filmwork:
   decisions <noteId> [--shot ID]          List decisions
   insights <noteId> [--category C]        List insights
 
+Provenance:
+  provenance <assetId>                    Query asset provenance
+  lineage <assetId> [--depth N]           Query lineage DAG edges
+  roll-snapshot <rollId>                  What assets were used to generate a roll
+  set-provenance <assetId> --method M [--model M] [--prompt P] [--parent JSON ...]
+
 Flags:
   --json    Output raw JSON (for piping)
 """
@@ -78,6 +84,10 @@ COMMANDS = {
     "insight": filmwork.add_insight,
     "decisions": filmwork.list_decisions,
     "insights": filmwork.list_insights,
+    "provenance": filmwork.provenance,
+    "lineage": filmwork.lineage,
+    "roll-snapshot": filmwork.roll_snapshot,
+    "set-provenance": filmwork.set_provenance,
 }
 
 NOTES_SUBCOMMANDS = {

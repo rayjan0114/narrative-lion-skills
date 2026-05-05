@@ -54,7 +54,7 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 | `nl.py overview <noteId>` | Project overview: status counts + all shots |
 | `nl.py shot <noteId> <label>` | Shot detail: preflight, assets, rolls, prompt |
 | `nl.py preflight <noteId> <label>` | Preflight check only |
-| `nl.py upload <shotId> <assetType> <file> [--label L]` | Upload asset (handles 3-step flow) |
+| `nl.py upload <shotId> <assetType> <file> [--label L] [--method M --model M --prompt P --user-note N --parent JSON]` | Upload asset (handles 3-step flow, optional provenance) |
 | `nl.py upload-roll <shotId> <file> [--seed N --model M --prompt-version N]` | Upload roll video |
 | `nl.py shot-update <shotId> --status S [--blocker JSON]` | Update shot status |
 | `nl.py score <rollId> --face N --expr N --motion N --stability N --style N` | Score a roll (auto-computes weighted total) |
@@ -64,6 +64,10 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 | `nl.py insight <noteId> --category C --title T --detail D [--source-shots JSON]` | Log insight |
 | `nl.py decisions <noteId> [--shot ID]` | List decisions |
 | `nl.py insights <noteId> [--category C]` | List insights |
+| `nl.py provenance <assetId>` | Query how an asset was made |
+| `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
+| `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
+| `nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--parent JSON ...]` | Set/update provenance after the fact |
 
 All commands support `--json` for raw JSON output.
 
@@ -153,13 +157,21 @@ Prepare → Preflight → Generate → Review → Act on verdict
 
 #### Prepare
 
-1. Upload reference assets:
+1. Upload reference assets with provenance:
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> start_frame /path/to/frame.png
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> start_frame /path/to/frame.png \
+     --method ai_generated --model "gpt-image-2" --prompt "Winter city street..." \
+     --parent '{"assetId":"<prev-asset-id>","role":"base"}' \
+     --parent '{"externalRef":"claire_fullbody.png — LoRA tier-1","role":"reference"}'
    ```
 2. For collection types (keyframe, sfx, ref_image), use `--label`:
    ```bash
    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> sfx /path/to/city_ambience.mp3 --label "City ambience"
+   ```
+3. For user-uploaded assets (no generation info), use `--method user_upload --user-note`:
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> ref_image /path/to/ref.png \
+     --label "Character ref" --method user_upload --user-note "From LoRA training set"
    ```
 
 #### Preflight
@@ -262,3 +274,48 @@ Categories: `prompt`, `model`, `workflow`, `continuity`.
 - BG mismatch between start/end frames = reference problem. Flag, don't penalize.
 - Mouth never moves for scripted line = expected (lip-sync is post). Don't penalize.
 - Mouth moves when it should be still = model failure ("liveliness bias"). Penalize under expression.
+
+### Asset Provenance
+
+Every asset should record how it was made. Provenance is **always optional** — it never blocks uploads.
+
+**Record inline during upload** (preferred — one API call):
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> end_frame /path/to/end.png \
+  --method ai_generated --model "gpt-image-2" \
+  --prompt "Based on start_frame, generate end frame of 5s slow push-in..." \
+  --parent '{"assetId":"<start-frame-id>","role":"base"}'
+```
+
+**Record after the fact** (for existing assets missing provenance):
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py set-provenance <assetId> \
+  --method user_upload --user-note "Downloaded from Midjourney, prompt: ..."
+```
+
+**Query provenance and lineage**:
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py provenance <assetId>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py lineage <assetId> --depth 3
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py roll-snapshot <rollId>
+```
+
+#### Methods
+- `ai_generated` — created by an AI model (record model + prompt)
+- `user_upload` — manually uploaded by user (record user_note)
+- `manual_edit` — edited by hand from an existing asset
+- `derived` — mechanically transformed (e.g. padded audio from dialogue)
+
+#### Parent roles
+- `base` — primary input the asset was derived from
+- `reference` — visual reference that guided generation
+- `style` — style reference
+- `mask` — mask or segmentation input
+- `composition` — layout/composition reference
+- `audio` — audio input (for audio-driven generation)
+
+#### When to record provenance
+- **Always** when you generate an asset with an AI model — this is the most valuable lineage data.
+- **Best-effort** for user uploads — at minimum record `method: user_upload`.
+- **Skip** for trivial derivations that don't add information.
+- `roll-snapshot` is recorded automatically when uploading a roll — no action needed.
