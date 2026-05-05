@@ -3,68 +3,86 @@ name: narrative-lion
 description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with notes, produce AI video shot pipelines, and export. Use when the user wants to "create a note from this video", "search my notes", "chat with my notes", "create a filmwork project", or "export my notes".
 metadata:
   author: rayjan0114
-  version: 0.7.0
+  version: 0.8.0
 ---
 
 # Narrative Lion
 
-Base URL: `https://narrativelion.com`
+Use the CLI at `${CLAUDE_PLUGIN_ROOT}/scripts/nl.py` for all API operations. Run via Bash:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py <command> [args...] [--json]
+```
 
 ## Auth
 
-```
-Authorization: Bearer $NLK_API_KEY
+```bash
+export NLK_API_KEY=nlk_xxxxxxxx
 ```
 
 Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 
-## API Reference
+## CLI Reference
 
-**MUST** fetch docs before your first API call in every conversation. Do NOT guess field names, argument names, or query names — the full schema is only in the docs.
+### General
 
-- General tasks: `WebFetch https://narrativelion.com/docs`
-- Filmwork tasks: `WebFetch https://narrativelion.com/docs/filmwork` (the main page has no filmwork schema)
+| Command | Description |
+|---|---|
+| `nl.py search <query> [--collection ID]` | Semantic search |
+| `nl.py fts <query> [--collection ID]` | Full-text keyword search |
+| `nl.py notes list [--collection ID] [--type T] [--uncategorized] [--starred]` | Browse notes |
+| `nl.py notes get <noteId>` | Note detail |
+| `nl.py notes create --type T --content C [--file path] [--skip-ai]` | Create note |
+| `nl.py export <noteId> [noteId2 ...]` | Export as Markdown zip |
+| `nl.py usage` | Credit usage |
 
-## Endpoints (quick reference)
+### Filmwork
 
-- `POST /graphql` — notes, search, tags, collections, filmwork CRUD
-- `GET /api/billing/usage` — credit usage and limits
-- `POST /api/chat/stream` — SSE chat (also film director + filmwork editing)
-- `POST /api/export/request` — export notes as Markdown zip
-- `POST /api/podcast/edit` — AI-edit podcast script
-- `POST /api/podcast/sts` — speech-to-speech
-- `POST /api/filmwork/director/persist` — persist storyboard + create filmwork note
-- `POST /api/filmwork/director/refine` — stream revised storyboard (SSE)
-- `POST /api/filmwork/director/refine-suggestions` — AI suggestions for storyboard
-- `POST /api/threads/:threadId/active-note` — set active note on a chat thread
+| Command | Description |
+|---|---|
+| `nl.py overview <noteId>` | Project overview: status counts + all shots |
+| `nl.py shot <noteId> <label>` | Shot detail: preflight, assets, rolls, prompt |
+| `nl.py preflight <noteId> <label>` | Preflight check only |
+| `nl.py upload <shotId> <assetType> <file> [--label L]` | Upload asset (handles 3-step flow) |
+| `nl.py upload-roll <shotId> <file> [--seed N --model M --prompt-version N]` | Upload roll video |
+| `nl.py shot-update <shotId> --status S [--blocker JSON]` | Update shot status |
+| `nl.py score <rollId> --face N --expr N --motion N --stability N --style N` | Score a roll (auto-computes weighted total) |
+| `nl.py verdict <rollId> <approved\|rejected>` | Set roll verdict |
+| `nl.py golden-roll <rollId>` | Set golden roll |
+| `nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O` | Log decision |
+| `nl.py insight <noteId> --category C --title T --detail D [--source-shots JSON]` | Log insight |
+| `nl.py decisions <noteId> [--shot ID]` | List decisions |
+| `nl.py insights <noteId> [--category C]` | List insights |
+
+All commands support `--json` for raw JSON output.
+
+**Note:** `upload` and `upload-roll` take the shot **UUID** (the `id` field), not the label. Get the UUID from `nl.py shot <noteId> <label>`.
 
 ## Best Practices
 
-### Collections
-
-Two-level folder tree. Set `parentId` on create to nest (max 1 level deep).
-`browseNotes(collectionId)` and `search(query, collectionId)` scope by collection.
-`browseNotes(uncategorized: true)` returns notes not in any collection.
-
 ### Search
 
-`search(query)` is semantic — usually finds what you need even when titles don't match.
-`ftsSearch(query)` for exact keyword matching. Both accept optional `collectionId`.
+`search` is semantic — finds results even when titles don't match.
+`fts` is exact keyword matching. Both accept `--collection`.
 
-### Chat / SSE
+### Collections
 
+Two-level folder tree. `notes list --collection ID` scopes by collection.
+`notes list --uncategorized` returns notes not in any collection.
+
+### Chat / SSE (not yet in CLI)
+
+For chat/SSE, use curl directly:
 - Event type: `"user_text"` (not "chat"). Payload field: `"text"` (not "message").
 - Fresh UUID for `actionId` every time — it's the idempotency key.
 - `noteTypeScope: ["filmwork"]` routes to filmwork edit. Without it → general chat.
 - Set active note on thread before filmwork editing.
 
+Full REST endpoint docs: `WebFetch https://narrativelion.com/docs`
+
 ### Podcast
 
-`createGeneralNote(noteType: "podcast", skipAi: true)`: content must be podcast IR JSON, not markdown.
-
-### Export
-
-Use `bsdtar -xf notes.zip -C notes/` — standard `unzip` mishandles non-ASCII filenames.
+`notes create --type podcast --skip-ai --content <podcast-ir-json>`: content must be podcast IR JSON, not markdown.
 
 ---
 
@@ -78,46 +96,37 @@ Use `bsdtar -xf notes.zip -C notes/` — standard `unzip` mishandles non-ASCII f
 | **B: Direct creation** | Have formatted storyboard | 0 credits |
 
 **Path A:** Chat with `activeTool: "film_director"` → persist via `/api/filmwork/director/persist`.
-**Path B:** `createGeneralNote(noteType: "filmwork", content: storyboard_md)` → `createFilmworkShot()` per shot.
+**Path B:** `notes create --type filmwork --content <storyboard_md>` then create shots via GraphQL.
 
 Labels must match `**01A** (Ns) — Title`. Invalid → `INVALID_STORYBOARD_FORMAT`.
-Film Director needs flat fields: `filmDirectorVideoType`, `filmDirectorTargetDurationSec`, `filmDirectorAspectRatio`.
-Full field schemas at `/docs/filmwork`.
+Full field schemas: `WebFetch https://narrativelion.com/docs/filmwork`
 
 ### Agent Hold
 
-Rolls and assets have an `agentHold` boolean. **If `agentHold: true`, do not touch that item** — skip it. Always include `agentHold` when querying rolls/assets.
+`shot` output marks assets/rolls with `[HOLD]`. **If `[HOLD]`, skip that item.**
 
 ### Scanning Project State
 
-Use `assetCounts` and `rollSummary` for compact overview — avoids pulling full asset/roll objects into context:
-
-```graphql
-{ filmworkOverview(noteId: "...") {
-    statusCounts { notStarted assetPrep ready generating review done blocked }
-    shots {
-      shotId status
-      assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo refImage total }
-      rollSummary { total pending approved rejected bestScore goldenRollId }
-      preflightStatus { ready }
-    }
-} }
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py overview <noteId>
 ```
 
-Drill into full `assets`/`rolls` only when you need IDs for mutations (e.g. `setGoldenAsset`, `deleteRoll`).
+Gives status counts + per-shot summary (assets, rolls, best score, preflight). Drill into a specific shot:
 
-**ID gotcha:** `shotId` in overview responses is the human label (e.g. "01A"). But `filmworkShot(shotId)` and all mutations take the **UUID** (the `id` field). Use `filmworkShotByLabel(noteId, shotLabel)` when you have a label.
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot <noteId> <label>
+```
 
 ### Before Starting Work on a Shot
 
 **Always check existing knowledge first:**
 
-```graphql
-{ filmworkDecisions(noteId: "...", shotId: "...") { action reason outcome createdAt } }
-{ filmworkInsights(noteId: "...") { category title detail } }
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decisions <noteId> --shot <shotUUID>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py insights <noteId>
 ```
 
-5 seconds of reading prevents 5 minutes of repeating past mistakes. Decisions and insights accumulate across sessions — they are the project's memory.
+5 seconds of reading prevents 5 minutes of repeating past mistakes.
 
 ### The Production Loop
 
@@ -129,174 +138,112 @@ Prepare → Preflight → Generate → Review → Act on verdict
 
 #### Prepare
 
-1. Upload reference assets: `requestUploadUrl(shotId, assetType, filename)` → PUT file → `confirmAssetUpload(...)`.
-   **PUT requires the same `Authorization: Bearer` header as GraphQL calls** (not a presigned URL).
-2. Set direction, prompt, model config via `createFilmworkShot` or `updateFilmworkShot`.
-3. For dialogue shots: upload `dialogue` or `padded_audio` asset.
+1. Upload reference assets:
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> start_frame /path/to/frame.png
+   ```
+2. For collection types (keyframe, sfx, ref_image), use `--label`:
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> sfx /path/to/city_ambience.mp3 --label "City ambience"
+   ```
 
 #### Preflight
 
-```graphql
-{ filmworkShotByLabel(noteId: "...", shotLabel: "01A") { preflightStatus { ready checks { name passed detail } } } }
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py preflight <noteId> <label>
 ```
 
-Three checks must pass: `start_frame` ready, `audio` ready, `active_prompt` exists. **Do not generate until `ready: true`.**
-
-If blocked externally → `updateShotStatus(shotId, status: "blocked", blockerJson: "{\"description\":\"...\",\"action\":\"...\",\"createdAt\":\"...\"}")`.
+Three checks: `start_frame` ready, `audio` ready, `active_prompt` exists. **Do not generate until all pass.**
 
 #### Generate & Upload
 
-Generate video externally, then: `requestRollUploadUrl` → PUT video → `confirmRollUpload(shotId, rollKey, seed, modelUsed, promptVersion)`.
+Generate video externally, then upload:
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload-roll <shotUUID> /path/to/video.mp4 --seed 42 --model "kling-2.6" --prompt-version 1
+```
 
 #### Review & Score
 
 Score across 5 weighted dimensions (max 55 points):
 
-| Dimension | ID | Weight | Focus |
-|---|---|---|---|
-| Face consistency | `faceLikeness` | x3 | Identity stable across all frames |
-| Expression fidelity | `expression` | x3 | Performance matches intended emotion |
-| Motion / morph | `motionNatural` | x2 | Hands, fingers, props hold structure |
-| Stability | `stability` | x2 | No late-stage collapse or drift |
-| Style match | `styleMatch` | x1 | Visual style consistent throughout |
+| Dimension | Flag | Weight |
+|---|---|---|
+| Face consistency | `--face` | x3 |
+| Expression fidelity | `--expr` | x3 |
+| Motion / morph | `--motion` | x2 |
+| Stability | `--stability` | x2 |
+| Style match | `--style` | x1 |
 
-```graphql
-mutation {
-  scoreRoll(rollId: "...", scorecardJson: "{\"rubricVersion\":1,\"scores\":{\"faceLikeness\":4,\"expression\":3,\"motionNatural\":4,\"stability\":4,\"styleMatch\":4}}")
-  { id totalScore }
-}
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py score <rollId> --face 4 --expr 3 --motion 4 --stability 4 --style 4
 ```
 
 #### Act on Verdict
 
 **>= 45 — Golden. Lock it:**
-```
-updateRollVerdict(rollId, verdict: "approved")
-setGoldenRoll(rollId)
-addDecision(noteId, shotId, actor: "agent", action: "approve_golden",
-  reason: "scored 48, strong across all dimensions",
-  outcome: "locked as golden, moving to next shot")
-updateShotStatus(shotId, status: "done")
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py verdict <rollId> approved
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py golden-roll <rollId>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decision <noteId> --shot <shotUUID> --action approve_golden --reason "scored 48, strong across all dimensions" --outcome "locked as golden, moving to next shot"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-update <shotUUID> --status done
 ```
 
 **40-44 — Approve with reservation:**
-```
-updateRollVerdict(rollId, verdict: "approved")
-setGoldenRoll(rollId)
-addDecision(..., action: "approve_with_reservation",
-  reason: "scored 42, minor hand drift at 6s",
-  outcome: "approved, may revisit if stronger model becomes available")
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py verdict <rollId> approved
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py golden-roll <rollId>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decision <noteId> --shot <shotUUID> --action approve_with_reservation --reason "scored 42, minor hand drift at 6s" --outcome "approved, may revisit if stronger model becomes available"
 ```
 
 **30-39 — Reject & revise:**
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py verdict <rollId> rejected
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py decision <noteId> --shot <shotUUID> --action plan_revision --reason "face morphing in last 2s" --outcome "adding negative prompt for morphing"
 ```
-updateRollVerdict(rollId, verdict: "rejected")
-```
-`updateRollVerdict(rejected)` auto-logs a basic rejection. Now add your analysis:
-```
-addDecision(..., actor: "agent", action: "plan_revision",
-  reason: "face morphing in last 2s, expression too flat at beat 2",
-  outcome: "adding negative prompt for morphing, restructuring beat timing")
-```
-Then fix the prompt and re-roll. **Never re-roll without changing something** — same inputs = same result.
+Then fix the prompt and re-roll. **Never re-roll without changing something.**
 
-**< 30 — Reject & debug. Do not re-roll.** Follow "Roll scored < 30" playbook below.
+**< 30 — Reject & debug. Do not re-roll.** Follow playbook below.
 
 ### Logging Decisions and Insights
 
-**Decisions** record what happened and why. Log after every significant action:
+**Decisions** — log after every significant action:
 
-`addDecision(noteId, shotId?, actor: "agent", action, reason, outcome)`
+Actions: `approve_golden`, `approve_with_reservation`, `plan_revision`, `switch_model`, `revise_prompt`, `block_shot`, `escalate_blocker`, `analyze_failure`, `strategy_change`.
 
-Actions: `"approve_golden"`, `"approve_with_reservation"`, `"plan_revision"`, `"switch_model"`, `"revise_prompt"`, `"block_shot"`, `"escalate_blocker"`, `"analyze_failure"`, `"strategy_change"`.
+**Insights** — log when you discover reusable knowledge:
 
-**Insights** capture reusable knowledge. Log when you discover something that applies beyond the current shot:
-
-`addInsight(noteId, category, title, detail?, sourceShotsJson?, applicableToJson?)`
-
-Categories: `prompt` (what works in prompts), `model` (capabilities and limits), `workflow` (process lessons), `continuity` (cross-shot consistency).
-
-Example: after discovering a model limitation:
-```
-addInsight(noteId: "...", category: "model",
-  title: "Kling 2.6 cannot reverse facing direction during push-in",
-  detail: "Character must change facing direction during camera push-in — consistently produces face morph. Works fine with locked or lateral camera.",
-  sourceShotsJson: "[\"01A\", \"03B\"]")
-```
-
-Example: after finding a prompt pattern that works:
-```
-addInsight(noteId: "...", category: "prompt",
-  title: "Beat structure improves close-up acting",
-  detail: "Timed beats (Beat 1: 0-2s action, Beat 2: 2-4s reaction) produce more precise expressions than free-form description.",
-  sourceShotsJson: "[\"01B\"]",
-  applicableToJson: "[\"all close-ups with dialogue\"]")
-```
-
-**Link reference material** when you use external notes (character bibles, production specs, etc.):
-
-`addNoteLink(sourceNoteId, targetNoteId, linkType)` — types: `character`, `setting`, `story`, `continuation`.
+Categories: `prompt`, `model`, `workflow`, `continuity`.
 
 ### Debug Playbooks
 
 #### Roll scored < 30
 
 1. **Do not re-roll.** Analyze first.
-2. `filmworkDecisions(noteId, shotId)` — what's been tried?
-3. `filmworkInsights(noteId, category: "model")` — known issues with this model?
-4. Check `scorecardJson` — which dimension scored lowest? That's your fix target.
-5. `filmworkOverview(noteId)` — any `done` shots? Compare golden rolls' prompts.
-6. Log analysis: `addDecision(action: "analyze_failure", reason: "...", outcome: "plan: ...")`.
+2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried?
+3. `nl.py insights <noteId> --category model` — known issues with this model?
+4. Check scorecard — which dimension scored lowest? That's your fix target.
+5. `nl.py overview <noteId>` — any done shots? Compare golden rolls' prompts.
+6. Log: `nl.py decision <noteId> --shot <shotUUID> --action analyze_failure --reason "..." --outcome "plan: ..."`
 7. Now fix and re-roll.
 
 #### 3+ rejected rolls on same shot
 
 **Stop. Do not re-roll.**
 
-1. Collect all rolls' `issues` — find the common pattern.
-2. `filmworkDecisions(noteId, shotId)` — what's been tried so far?
-3. `filmworkInsights(noteId)` — is this pattern documented?
-4. Consider: switch model, rewrite prompt from scratch, change reference frames, simplify the shot.
-5. Log the pattern: `addInsight(category: "workflow", title: "...", detail: "Shot X required N attempts because...")`.
-6. Log your new plan: `addDecision(action: "strategy_change", reason: "...", outcome: "new approach: ...")`.
+1. Collect all rolls' issues — find the common pattern.
+2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried so far?
+3. `nl.py insights <noteId>` — is this pattern documented?
+4. Consider: switch model, rewrite prompt, change reference frames, simplify the shot.
+5. Log: `nl.py insight <noteId> --category workflow --title "..." --detail "Shot X required N attempts because..."`
+6. Log: `nl.py decision <noteId> --shot <shotUUID> --action strategy_change --reason "..." --outcome "new approach: ..."`
 7. Then try the new approach.
-
-#### Shot blocked
-
-1. Check `blockerJson` for the description and required action.
-2. Can you resolve it? Fix it → `updateShotStatus(status: "asset_prep")`.
-3. Cannot? → `addDecision(action: "escalate_blocker", outcome: "needs human input")` → move to next shot.
-
-#### Same model failing on a shot type
-
-1. `filmworkInsights(noteId, category: "model")` — already documented?
-2. If not: `addInsight(category: "model", title: "[Model] struggles with [type]", detail: "...", sourceShotsJson: "[...]")`.
-3. Check if another model succeeded on similar shots in this project.
-4. `addDecision(action: "switch_model", reason: "...", outcome: "switching to ...")`.
 
 ### Scoring Calibration
 
-- 55/55 = perfect execution, zero drift. Extremely rare.
+- 55/55 = perfect, extremely rare.
 - 45+ = excellent. Lock it.
-- Most first-run outputs land 35-42. This is normal.
-- Score the model against the brief, not the brief itself. Wrong emotion = creative decision issue, not model failure.
-- BG mismatch between start/end frames = reference problem. Flag it, don't penalize the model.
-- Props missing from output = they weren't in the input frames. Fix the setup, not the prompt.
-- Mouth never moves for scripted line = expected for models without native audio. Lip-sync is a post step. Don't penalize.
-- Mouth moves continuously when it should be still = model failure ("liveliness bias"). Penalize under expression.
-
-## JSON Field Quick Reference
-
-Several mutation fields accept stringified JSON. Common gotchas:
-
-- **`dialogue`**: must be a JSON **array** `[{speaker, text, type, emotion?}]`, not a string. Empty = `[]`.
-- **`blockerJson`**: single **object** `{description, action, createdAt}`, not an array.
-- **`promptsJson`**: array `[{version (Int), body, isActive (Bool), ...}]`. Exactly one entry should have `isActive: true`.
-- **`seed`** and **`promptVersion`** on `confirmRollUpload`: both are **`Int`**, not `String`.
-
-Full schemas with examples at `/docs/filmwork` → "JSON field schemas" section.
-
-## HTTP Client
-
-- Always set a `User-Agent` header (e.g. `User-Agent: NarrativeLion-Agent/1.0`). Default UAs from Python/Node HTTP libraries are blocked → `403`.
-- If you get `403 Invalid origin` without an API key, add `Origin: https://narrativelion.com`.
+- Most first-run outputs land 35-42. Normal.
+- Score the model against the brief, not the brief itself.
+- BG mismatch between start/end frames = reference problem. Flag, don't penalize.
+- Mouth never moves for scripted line = expected (lip-sync is post). Don't penalize.
+- Mouth moves when it should be still = model failure ("liveliness bias"). Penalize under expression.

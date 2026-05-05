@@ -29,6 +29,31 @@ After install, your AI agent has access to the `narrative-lion` skill. Just ask:
 - "Edit shot 01A to change the camera angle"
 - "Export all my notes as Markdown"
 
+## Architecture
+
+The skill uses a **CLI-first** approach following [Anthropic's skill best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices):
+
+```
+skills/narrative-lion/
+├── SKILL.md                    # Decision guidance + command reference
+└── scripts/
+    ├── nl.py                   # CLI entry point
+    ├── lib/
+    │   ├── client.py           # GraphQL/REST client, auth, error handling
+    │   └── formatters.py       # Output formatting
+    └── commands/
+        ├── search.py           # search, fts
+        ├── notes.py            # notes list/get/create
+        ├── filmwork.py         # overview, shot, upload, score, verdict, ...
+        ├── export.py           # export
+        └── billing.py          # usage
+```
+
+- **SKILL.md** = high-freedom decisions (what to do, when, why)
+- **scripts/** = low-freedom operations (exact API calls, zero guessing)
+
+This is ~35x more token-efficient than MCP and eliminates GraphQL field-name errors.
+
 ## Filmwork (AI Video Shot Production)
 
 The skill includes full support for Narrative Lion's Filmwork pipeline:
@@ -42,10 +67,10 @@ See the [full docs](https://narrativelion.com/docs#filmwork-pipeline) for detail
 
 ## Skill Authoring Guidelines
 
-- Skill files should focus on **best practices** and **high-level architecture** — gotchas, common mistakes, decision points.
-- Keep everything else minimal. Full schema details (field names, argument types, payloads) belong in the [API docs](https://narrativelion.com/docs), not in skill files.
-- Include just enough operation signatures for the agent to make API calls without fetching the docs for common tasks.
-- **MUST WebFetch docs** is intentional: because the skill only covers best practices and high-level architecture, the agent needs to fetch the full API docs (`/docs`, `/docs/filmwork`, etc.) at least once per conversation to get exact field names, argument types, and payloads before making API calls.
+- **SKILL.md** focuses on best practices, decision guidance, and command reference.
+- **scripts/** handles all API interactions — agents call CLI commands via Bash, not raw GraphQL.
+- Scripts use stdlib only (no pip install required).
+- For operations not covered by the CLI (e.g. SSE chat), agents may use curl directly — refer to the full [API docs](https://narrativelion.com/docs).
 
 ## Reference
 
