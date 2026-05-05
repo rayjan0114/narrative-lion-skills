@@ -97,7 +97,7 @@ Use `assetCounts` and `rollSummary` for compact overview — avoids pulling full
     statusCounts { notStarted assetPrep ready generating review done blocked }
     shots {
       shotId status
-      assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo total }
+      assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo refImage total }
       rollSummary { total pending approved rejected bestScore goldenRollId }
       preflightStatus { ready }
     }
