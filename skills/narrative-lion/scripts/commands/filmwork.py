@@ -593,23 +593,35 @@ def add_insight(args: list[str], json_mode: bool = False) -> None:
 
 def list_decisions(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py decisions <noteId> [--shot ID]"); return
+        print("Usage: nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]"); return
 
     note_id = args[0]
-    shot_id = None
-    if "--shot" in args:
-        idx = args.index("--shot")
-        shot_id = args[idx + 1] if idx + 1 < len(args) else None
+    shot_id = None; limit = None; offset = None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--shot" and i + 1 < len(args):
+            shot_id = args[i + 1]; i += 2
+        elif args[i] == "--limit" and i + 1 < len(args):
+            limit = int(args[i + 1]); i += 2
+        elif args[i] == "--offset" and i + 1 < len(args):
+            offset = int(args[i + 1]); i += 2
+        else:
+            i += 1
 
     gql = """
-    query($noteId: String!, $shotId: String) {
-      filmworkDecisions(noteId: $noteId, shotId: $shotId) {
+    query($noteId: String!, $shotId: String, $limit: Int, $offset: Int) {
+      filmworkDecisions(noteId: $noteId, shotId: $shotId, limit: $limit, offset: $offset) {
         id shotId actor action reason outcome createdAt
       }
     }"""
     variables: dict = {"noteId": note_id}
     if shot_id:
         variables["shotId"] = shot_id
+    if limit is not None:
+        variables["limit"] = limit
+    if offset is not None:
+        variables["offset"] = offset
 
     data = graphql(gql, variables)
     decisions = data.get("filmworkDecisions", [])
@@ -630,23 +642,35 @@ def list_decisions(args: list[str], json_mode: bool = False) -> None:
 
 def list_insights(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py insights <noteId> [--category C]"); return
+        print("Usage: nl.py insights <noteId> [--category C] [--limit N] [--offset N]"); return
 
     note_id = args[0]
-    category = None
-    if "--category" in args:
-        idx = args.index("--category")
-        category = args[idx + 1] if idx + 1 < len(args) else None
+    category = None; limit = None; offset = None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--category" and i + 1 < len(args):
+            category = args[i + 1]; i += 2
+        elif args[i] == "--limit" and i + 1 < len(args):
+            limit = int(args[i + 1]); i += 2
+        elif args[i] == "--offset" and i + 1 < len(args):
+            offset = int(args[i + 1]); i += 2
+        else:
+            i += 1
 
     gql = """
-    query($noteId: String!, $category: String) {
-      filmworkInsights(noteId: $noteId, category: $category) {
+    query($noteId: String!, $category: String, $limit: Int, $offset: Int) {
+      filmworkInsights(noteId: $noteId, category: $category, limit: $limit, offset: $offset) {
         id category title detail createdAt
       }
     }"""
     variables: dict = {"noteId": note_id}
     if category:
         variables["category"] = category
+    if limit is not None:
+        variables["limit"] = limit
+    if offset is not None:
+        variables["offset"] = offset
 
     data = graphql(gql, variables)
     insights = data.get("filmworkInsights", [])

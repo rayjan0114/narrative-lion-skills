@@ -40,8 +40,10 @@ Filmwork:
   golden-roll <rollId>                    Set golden roll
   decision <noteId> [--shot ID] --action A --reason R --outcome O
   insight <noteId> --category C --title T --detail D
-  decisions <noteId> [--shot ID]          List decisions
-  insights <noteId> [--category C]        List insights
+  decisions <noteId> [--shot ID] [--limit N] [--offset N]
+                                          List decisions
+  insights <noteId> [--category C] [--limit N] [--offset N]
+                                          List insights (default 50)
 
 Download:
   download <assetId> <output_path>        Download a single asset

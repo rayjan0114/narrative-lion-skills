@@ -60,8 +60,8 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py golden-roll <rollId>` | Set golden roll |
 | `nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O` | Log decision |
 | `nl.py insight <noteId> --category C --title T --detail D [--source-shots JSON]` | Log insight |
-| `nl.py decisions <noteId> [--shot ID]` | List decisions |
-| `nl.py insights <noteId> [--category C]` | List insights |
+| `nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]` | List decisions |
+| `nl.py insights <noteId> [--category C] [--limit N] [--offset N]` | List insights (default 50) |
 | `nl.py provenance <assetId>` | Query how an asset was made |
 | `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
