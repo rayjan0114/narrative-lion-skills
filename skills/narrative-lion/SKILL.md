@@ -20,7 +20,10 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 
 ## API Reference
 
-**MUST** `WebFetch https://narrativelion.com/docs` before your first API call in every conversation. Do NOT guess field names, argument names, or query names — the full schema is only in the docs.
+**MUST** fetch docs before your first API call in every conversation. Do NOT guess field names, argument names, or query names — the full schema is only in the docs.
+
+- General tasks: `WebFetch https://narrativelion.com/docs`
+- Filmwork tasks: `WebFetch https://narrativelion.com/docs/filmwork` (the main page has no filmwork schema)
 
 ## Endpoints (quick reference)
 
@@ -90,15 +93,20 @@ Rolls and assets have an `agentHold` boolean. **If `agentHold: true`, do not tou
 Use `assetCounts` and `rollSummary` for compact overview — avoids pulling full asset/roll objects into context:
 
 ```graphql
-{ filmworkOverview(noteId: "...") { shots {
-    shotId status
-    assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo total }
-    rollSummary { total pending approved rejected bestScore goldenRollId }
-    preflightStatus { ready }
-} } }
+{ filmworkOverview(noteId: "...") {
+    statusCounts { notStarted assetPrep ready generating review done blocked }
+    shots {
+      shotId status
+      assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo total }
+      rollSummary { total pending approved rejected bestScore goldenRollId }
+      preflightStatus { ready }
+    }
+} }
 ```
 
 Drill into full `assets`/`rolls` only when you need IDs for mutations (e.g. `setGoldenAsset`, `deleteRoll`).
+
+**ID gotcha:** `shotId` in overview responses is the human label (e.g. "01A"). But `filmworkShot(shotId)` and all mutations take the **UUID** (the `id` field). Use `filmworkShotByLabel(noteId, shotLabel)` when you have a label.
 
 ### Before Starting Work on a Shot
 
@@ -129,7 +137,7 @@ Prepare → Preflight → Generate → Review → Act on verdict
 #### Preflight
 
 ```graphql
-{ filmworkShot(shotId: "...") { preflightStatus { ready checks { name passed detail } } } }
+{ filmworkShotByLabel(noteId: "...", shotLabel: "01A") { preflightStatus { ready checks { name passed detail } } } }
 ```
 
 Three checks must pass: `start_frame` ready, `audio` ready, `active_prompt` exists. **Do not generate until `ready: true`.**
@@ -290,6 +298,5 @@ Full schemas with examples at `/docs/filmwork` → "JSON field schemas" section.
 
 ## HTTP Client
 
-- **curl** with an API key works out of the box.
-- **Python / other clients**: set a custom `User-Agent` (default `Python-urllib` / `python-requests` UAs are blocked → `403`).
+- Always set a `User-Agent` header (e.g. `User-Agent: NarrativeLion-Agent/1.0`). Default UAs from Python/Node HTTP libraries are blocked → `403`.
 - If you get `403 Invalid origin` without an API key, add `Origin: https://narrativelion.com`.
