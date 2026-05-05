@@ -23,7 +23,7 @@ General:
 
 Film Director:
   director <concept> [--type T] [--duration N] [--aspect R] [--style S] [--thread ID]
-      Generate storyboard from concept. (LLM cost: 1-2 credits)
+      Generate storyboard from concept. (costs 1-2 credits)
   director-persist <threadId> --storyboard <md> --instruction <text> [--immediate]
       Persist storyboard as filmwork note. (no LLM cost)
 

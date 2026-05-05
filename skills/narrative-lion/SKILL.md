@@ -42,7 +42,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 
 | Command | Description |
 |---|---|
-| `nl.py director <concept> [--type T] [--duration N] [--aspect R] [--style S]` | Generate storyboard from concept **(LLM cost: 1-2 credits — only use when user explicitly requests)** |
+| `nl.py director <concept> [--type T] [--duration N] [--aspect R] [--style S]` | Generate storyboard from concept (costs 1-2 credits) |
 | `nl.py director-persist <threadId> --storyboard <md> --instruction <text>` | Persist storyboard as filmwork note (no LLM cost) |
 
 ### Filmwork
@@ -89,7 +89,7 @@ Two-level folder tree. `notes list --collection ID` scopes by collection.
 
 ### Film Director Notes
 
-`director` has LLM cost (1-2 credits). Only use when the user explicitly asks to generate a new storyboard. To edit existing shot fields (prompts, dialogue, direction, model config), use `shot-update` instead — zero LLM cost.
+`director` costs 1-2 credits per call.
 
 Threading: omit `--thread` for a new conversation, pass `--thread <id>` to continue.
 
