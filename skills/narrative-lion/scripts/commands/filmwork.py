@@ -7,7 +7,7 @@ import mimetypes
 import os
 import sys
 
-from lib.client import graphql, upload_binary
+from lib.client import graphql, upload_binary, download_binary, BASE_URL
 from lib.formatters import as_json, status_bar
 
 
@@ -783,3 +783,117 @@ def set_provenance(args: list[str], json_mode: bool = False) -> None:
         for p in parents:
             ref = p.get("parentAssetId") or p.get("parentExternalRef", "?")
             print(f"    [{p['role']}] {ref}")
+
+
+# ---------------------------------------------------------------------------
+# Download
+# ---------------------------------------------------------------------------
+
+_ASSET_EXT = {
+    "start_frame": ".png", "end_frame": ".png", "keyframe": ".png",
+    "ref_image": ".png", "dialogue": ".mp3", "sfx": ".mp3",
+    "padded_audio": ".mp3", "ref_video": ".mp4",
+}
+
+_ASSET_PREFIX = {
+    "start_frame": "FINAL", "end_frame": "FINAL",
+    "sfx": "SFX", "dialogue": "DLG", "keyframe": "KF",
+    "padded_audio": "PADDED", "ref_image": "REF", "ref_video": "REFVID",
+}
+
+
+def _asset_filename(shot_label: str, asset_type: str, label: str | None, version: int,
+                    include_version: bool = False) -> str:
+    prefix = _ASSET_PREFIX.get(asset_type, asset_type.upper())
+    ext = _ASSET_EXT.get(asset_type, ".bin")
+    vsuffix = f"_v{version}" if include_version else ""
+    if label:
+        safe_label = label.replace(" ", "_").replace("/", "_")
+        return f"{shot_label}_{prefix}_{safe_label}{vsuffix}{ext}"
+    if asset_type in ("start_frame", "end_frame"):
+        return f"{shot_label}_{prefix}_{asset_type}{vsuffix}{ext}"
+    return f"{shot_label}_{prefix}_v{version}{ext}"
+
+
+def download_asset(args: list[str], json_mode: bool = False) -> None:
+    if len(args) < 2:
+        print("Usage: nl.py download <assetId> <output_path>"); return
+
+    asset_id = args[0]
+    output_path = args[1]
+    url = f"{BASE_URL}/api/filmwork/assets/{asset_id}/content"
+
+    print(f"  Downloading {asset_id}...")
+    download_binary(url, output_path)
+    size = os.path.getsize(output_path)
+    print(f"  Saved: {output_path} ({size:,} bytes)")
+
+    if json_mode:
+        print(as_json({"assetId": asset_id, "path": output_path, "size": size}))
+
+
+def download_shot(args: list[str], json_mode: bool = False) -> None:
+    if len(args) < 2:
+        print("Usage: nl.py download-shot <noteId> <label> [--dir D] [--all]"); return
+
+    note_id, label = args[0], args[1]
+    golden_only = "--all" not in args
+    output_dir = "."
+    if "--dir" in args:
+        idx = args.index("--dir")
+        if idx + 1 < len(args):
+            output_dir = args[idx + 1]
+
+    gql = """
+    query($noteId: String!, $shotLabel: String!) {
+      filmworkShotByLabel(noteId: $noteId, shotLabel: $shotLabel) {
+        id shotId
+        assets { id assetType label url version isGolden agentHold }
+      }
+    }"""
+    data = graphql(gql, {"noteId": note_id, "shotLabel": label})
+    s = data.get("filmworkShotByLabel")
+    if not s:
+        print(f"Shot {label} not found in {note_id}"); return
+
+    assets = s.get("assets", [])
+    if golden_only:
+        assets = [a for a in assets if a.get("isGolden")]
+
+    if not assets:
+        qualifier = "golden " if golden_only else ""
+        print(f"  No {qualifier}assets found for {label}.")
+        if golden_only:
+            print("  Use --all to download all versions.")
+        return
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Detect duplicate type+label combos to add version suffix
+    from collections import Counter
+    type_label_counts = Counter((a["assetType"], a.get("label")) for a in assets if not a.get("agentHold"))
+    needs_version = {k for k, v in type_label_counts.items() if v > 1}
+
+    results = []
+    for a in assets:
+        if a.get("agentHold"):
+            print(f"  [HOLD] Skipping {a['assetType']} {a.get('label', '')} (agent hold)")
+            continue
+
+        force_version = (a["assetType"], a.get("label")) in needs_version
+        filename = _asset_filename(
+            s.get("shotId", label), a["assetType"], a.get("label"), a.get("version", 1),
+            include_version=force_version,
+        )
+        dest = os.path.join(output_dir, filename)
+        url = f"{BASE_URL}/api/filmwork/assets/{a['id']}/content"
+
+        print(f"  Downloading {a['assetType']}{' [' + a['label'] + ']' if a.get('label') else ''} → {filename}")
+        download_binary(url, dest)
+        size = os.path.getsize(dest)
+        results.append({"assetId": a["id"], "type": a["assetType"], "file": filename, "size": size})
+
+    print(f"\n  {len(results)} file(s) saved to {output_dir}")
+
+    if json_mode:
+        print(as_json(results))

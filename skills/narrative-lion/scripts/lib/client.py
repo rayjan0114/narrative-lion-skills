@@ -138,6 +138,32 @@ def upload_binary(url: str, file_path: str, content_type: str = "application/oct
         sys.exit(1)
 
 
+def download_binary(url: str, output_path: str) -> None:
+    """GET binary data from a URL and save to a local file."""
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {get_api_key()}",
+            "User-Agent": USER_AGENT,
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            with open(output_path, "wb") as f:
+                while True:
+                    chunk = resp.read(8192)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+    except urllib.error.HTTPError as e:
+        print(f"Error: HTTP {e.code} downloading {url}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Error: Network error — {e.reason}", file=sys.stderr)
+        sys.exit(1)
+
+
 def new_uuid() -> str:
     return str(uuid.uuid4())
 

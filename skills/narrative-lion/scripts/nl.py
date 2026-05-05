@@ -50,6 +50,11 @@ Filmwork:
   decisions <noteId> [--shot ID]          List decisions
   insights <noteId> [--category C]        List insights
 
+Download:
+  download <assetId> <output_path>        Download a single asset
+  download-shot <noteId> <label> [--dir D] [--all]
+      Download golden assets for a shot (or --all versions)
+
 Provenance:
   provenance <assetId>                    Query asset provenance
   lineage <assetId> [--depth N]           Query lineage DAG edges
@@ -88,6 +93,8 @@ COMMANDS = {
     "lineage": filmwork.lineage,
     "roll-snapshot": filmwork.roll_snapshot,
     "set-provenance": filmwork.set_provenance,
+    "download": filmwork.download_asset,
+    "download-shot": filmwork.download_shot,
 }
 
 NOTES_SUBCOMMANDS = {

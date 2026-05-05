@@ -22,6 +22,8 @@ export NLK_API_KEY=nlk_xxxxxxxx
 
 Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 
+All API calls use `Authorization: Bearer $NLK_API_KEY` header.
+
 ## CLI Reference
 
 ### General
@@ -68,6 +70,8 @@ Create one at https://narrativelion.com/settings/api-keys (Pro plan required).
 | `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
 | `nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--parent JSON ...]` | Set/update provenance after the fact |
+| `nl.py download <assetId> <output_path>` | Download a single asset to local file |
+| `nl.py download-shot <noteId> <label> [--dir D] [--all]` | Download golden assets for a shot (--all for every version) |
 
 All commands support `--json` for raw JSON output.
 
@@ -135,6 +139,18 @@ Gives status counts + per-shot summary (assets, rolls, best score, preflight). D
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot <noteId> <label>
 ```
+
+### Sync to Local Studio
+
+Download golden assets to the local studio directory:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py download-shot <noteId> <label> --dir studio/scene/season01/ep01/final/<label>_<scene>/
+```
+
+Studio directory convention: `studio/scene/season01/ep01/final/{label}_{scene_name}/`
+
+File naming: `{label}_FINAL_start_frame.png`, `{label}_FINAL_end_frame.png`, `{label}_SFX_{name}.mp3`, etc.
 
 ### Before Starting Work on a Shot
 
