@@ -18,6 +18,7 @@ General:
   notes list [--collection ID] [--type T] Browse notes
   notes get <noteId>                      Get note details
   notes create --type T --content C       Create note
+  notes update <noteId> [--content C]     Update note (--metadata/--file)
   export <noteId> [noteId2 ...]           Export notes as zip
   usage                                   Credit usage
 
@@ -42,8 +43,8 @@ Filmwork:
   insight <noteId> --category C --tags T1,T2 --title T --detail D
   decisions <noteId> [--shot ID] [--limit N] [--offset N]
                                           List decisions
-  insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]
-                                          List insights (default 50)
+  insights [noteId] [--category C] [--tag T] [--limit N] [--offset N]
+                                          List insights (cross-note if no noteId)
 
 Download:
   download <assetId> <output_path>        Download a single asset
@@ -92,6 +93,7 @@ NOTES_SUBCOMMANDS = {
     "list": notes.list_notes,
     "get": notes.get_note,
     "create": notes.create_note,
+    "update": notes.update_note,
 }
 
 

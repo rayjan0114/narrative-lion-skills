@@ -647,13 +647,9 @@ def list_decisions(args: list[str], json_mode: bool = False) -> None:
 
 
 def list_insights(args: list[str], json_mode: bool = False) -> None:
-    if not args:
-        print("Usage: nl.py insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]"); return
+    note_id = None; category = None; tag = None; limit = None; offset = None
 
-    note_id = args[0]
-    category = None; tag = None; limit = None; offset = None
-
-    i = 1
+    i = 0
     while i < len(args):
         if args[i] == "--category" and i + 1 < len(args):
             category = args[i + 1]; i += 2
@@ -663,16 +659,20 @@ def list_insights(args: list[str], json_mode: bool = False) -> None:
             limit = int(args[i + 1]); i += 2
         elif args[i] == "--offset" and i + 1 < len(args):
             offset = int(args[i + 1]); i += 2
+        elif not note_id and not args[i].startswith("--"):
+            note_id = args[i]; i += 1
         else:
             i += 1
 
     gql = """
-    query($noteId: String!, $category: String, $tag: String, $limit: Int, $offset: Int) {
+    query($noteId: String, $category: String, $tag: String, $limit: Int, $offset: Int) {
       filmworkInsights(noteId: $noteId, category: $category, tag: $tag, limit: $limit, offset: $offset) {
-        id category tagsJson title detail createdAt
+        id noteId category tagsJson title detail createdAt
       }
     }"""
-    variables: dict = {"noteId": note_id}
+    variables: dict = {}
+    if note_id:
+        variables["noteId"] = note_id
     if category:
         variables["category"] = category
     if tag:

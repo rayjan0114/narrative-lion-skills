@@ -61,7 +61,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O` | Log decision |
 | `nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]` | Log insight |
 | `nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]` | List decisions |
-| `nl.py insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]` | List insights (default 50) |
+| `nl.py insights [noteId] [--category C] [--tag T] [--limit N] [--offset N]` | List insights (cross-note if no noteId) |
 | `nl.py provenance <assetId>` | Query how an asset was made |
 | `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
@@ -240,10 +240,11 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py insights <noteId>
 Spawn a sub-agent (via the Agent tool) to review relevant insights before writing or modifying a video prompt. This avoids loading raw insight data into the main context.
 
 Sub-agent instructions:
-1. Run `nl.py insights <noteId> --category video --json` (or `--category image` for image generation)
-2. Read through all returned insights
-3. Return a short bullet list of insights relevant to the current shot's content (camera movement, character action, scene type)
-4. If no insights are relevant, return "No relevant prompt insights found"
+1. Run `nl.py insights --category video --json` (cross-note; or add `<noteId>` to scope to one project)
+2. For image generation, use `--category image` instead
+3. Read through all returned insights
+4. Return a short bullet list of insights relevant to the current shot's content (camera movement, character action, scene type)
+5. If no insights are relevant, return "No relevant prompt insights found"
 
 Use `--tag` to narrow results when you know the topic (e.g. `--tag motion-direction`, `--tag start-end-pair`).
 

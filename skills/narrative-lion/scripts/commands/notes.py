@@ -69,7 +69,7 @@ def get_note(args: list[str], json_mode: bool = False) -> None:
     gql = """
     query($noteId: String!) {
       note(noteId: $noteId) {
-        id videoId noteType lang title noteMd tags collections
+        id videoId noteType lang title noteMd metadata tags collections { id name }
         starredAt createdAt updatedAt
       }
     }"""
@@ -143,3 +143,56 @@ def create_note(args: list[str], json_mode: bool = False) -> None:
 
     print(f"  Created: {note.get('id')}")
     print(f"  Type:    {note_type}")
+
+
+def update_note(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py notes update <noteId> [--content <text>] [--metadata <json>] [--file <path>]")
+        return
+
+    note_id = args[0]
+    content = None
+    metadata = None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--content" and i + 1 < len(args):
+            content = args[i + 1]; i += 2
+        elif args[i] == "--metadata" and i + 1 < len(args):
+            metadata = args[i + 1]; i += 2
+        elif args[i] == "--file" and i + 1 < len(args):
+            with open(args[i + 1]) as f:
+                file_content = f.read()
+            if file_content.lstrip().startswith("{"):
+                metadata = file_content
+            else:
+                content = file_content
+            i += 2
+        else:
+            i += 1
+
+    if content is None and metadata is None:
+        print("Provide --content, --metadata, or --file")
+        return
+
+    gql = """
+    mutation($noteId: String!, $noteMd: String, $metadata: String) {
+      updateNote(noteId: $noteId, noteMd: $noteMd, metadata: $metadata) {
+        id noteMd metadata updatedAt
+      }
+    }"""
+    variables: dict = {"noteId": note_id}
+    if content is not None:
+        variables["noteMd"] = content
+    if metadata is not None:
+        variables["metadata"] = metadata
+
+    data = graphql(gql, variables)
+    note = data.get("updateNote")
+
+    if json_mode:
+        print(as_json(note))
+        return
+
+    print(f"  Updated: {note.get('id')}")
+    print(f"  At:      {note.get('updatedAt')}")
