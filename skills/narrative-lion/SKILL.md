@@ -173,6 +173,16 @@ mutation {
 ```
 `noteMd` is auto-derived from IR on every `updateNote(metadata: ...)` call.
 
+**Export audio:**
+```graphql
+mutation {
+  exportPodcast(noteId: "...", format: "mp3", paddingMs: 200) {
+    url durationMs
+  }
+}
+```
+`format`: `"mp3"` (default) merges all segments into one file with silence gaps; `"zip"` gives one MP3 per segment, no gaps. `paddingMs` (0-10000) adds extra silence after each segment (mp3 only). Download via `GET /api/audio/<noteId>/export`. Speed adjustment is UI-only (not available via API).
+
 **Full docs:** https://narrativelion.com/docs/podcast
 
 ---
