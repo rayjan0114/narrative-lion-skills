@@ -553,12 +553,14 @@ def add_decision(args: list[str], json_mode: bool = False) -> None:
 
 
 def add_insight(args: list[str], json_mode: bool = False) -> None:
-    note_id = None; category = None; title = None; detail = None; source_shots = None
+    note_id = None; category = None; tags = None; title = None; detail = None; source_shots = None
 
     i = 0
     while i < len(args):
         if args[i] == "--category" and i + 1 < len(args):
             category = args[i + 1]; i += 2
+        elif args[i] == "--tags" and i + 1 < len(args):
+            tags = args[i + 1]; i += 2
         elif args[i] == "--title" and i + 1 < len(args):
             title = args[i + 1]; i += 2
         elif args[i] == "--detail" and i + 1 < len(args):
@@ -570,16 +572,20 @@ def add_insight(args: list[str], json_mode: bool = False) -> None:
         else:
             i += 1
 
-    if not all([note_id, category, title, detail]):
-        print("Usage: nl.py insight <noteId> --category C --title T --detail D [--source-shots JSON]"); return
+    if not all([note_id, category, tags, title, detail]):
+        print("Usage: nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]"); return
+
+    import json as _json
+    tags_list = [t.strip() for t in tags.split(",")]
+    tags_json = _json.dumps(tags_list)
 
     gql = """
-    mutation($noteId: String!, $category: String!, $title: String!, $detail: String!, $sourceShotsJson: String) {
-      addInsight(noteId: $noteId, category: $category, title: $title, detail: $detail, sourceShotsJson: $sourceShotsJson) {
-        id title createdAt
+    mutation($noteId: String!, $category: String!, $tagsJson: String!, $title: String!, $detail: String!, $sourceShotsJson: String) {
+      addInsight(noteId: $noteId, category: $category, tagsJson: $tagsJson, title: $title, detail: $detail, sourceShotsJson: $sourceShotsJson) {
+        id category tagsJson title createdAt
       }
     }"""
-    variables: dict = {"noteId": note_id, "category": category, "title": title, "detail": detail}
+    variables: dict = {"noteId": note_id, "category": category, "tagsJson": tags_json, "title": title, "detail": detail}
     if source_shots:
         variables["sourceShotsJson"] = source_shots
 
@@ -642,15 +648,17 @@ def list_decisions(args: list[str], json_mode: bool = False) -> None:
 
 def list_insights(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py insights <noteId> [--category C] [--limit N] [--offset N]"); return
+        print("Usage: nl.py insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]"); return
 
     note_id = args[0]
-    category = None; limit = None; offset = None
+    category = None; tag = None; limit = None; offset = None
 
     i = 1
     while i < len(args):
         if args[i] == "--category" and i + 1 < len(args):
             category = args[i + 1]; i += 2
+        elif args[i] == "--tag" and i + 1 < len(args):
+            tag = args[i + 1]; i += 2
         elif args[i] == "--limit" and i + 1 < len(args):
             limit = int(args[i + 1]); i += 2
         elif args[i] == "--offset" and i + 1 < len(args):
@@ -659,14 +667,16 @@ def list_insights(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     gql = """
-    query($noteId: String!, $category: String, $limit: Int, $offset: Int) {
-      filmworkInsights(noteId: $noteId, category: $category, limit: $limit, offset: $offset) {
-        id category title detail createdAt
+    query($noteId: String!, $category: String, $tag: String, $limit: Int, $offset: Int) {
+      filmworkInsights(noteId: $noteId, category: $category, tag: $tag, limit: $limit, offset: $offset) {
+        id category tagsJson title detail createdAt
       }
     }"""
     variables: dict = {"noteId": note_id}
     if category:
         variables["category"] = category
+    if tag:
+        variables["tag"] = tag
     if limit is not None:
         variables["limit"] = limit
     if offset is not None:
@@ -681,8 +691,16 @@ def list_insights(args: list[str], json_mode: bool = False) -> None:
     if not insights:
         print("  No insights found."); return
 
+    import json as _json
     for ins in insights:
-        print(f"  [{ins.get('category','')}] {ins.get('title','')}")
+        tags_str = ""
+        try:
+            tags = _json.loads(ins.get("tagsJson", "[]"))
+            if tags:
+                tags_str = f" ({', '.join(tags)})"
+        except Exception:
+            pass
+        print(f"  [{ins.get('category','')}] {ins.get('title','')}{tags_str}")
         if ins.get("detail"):
             print(f"    {ins['detail'][:120]}")
 

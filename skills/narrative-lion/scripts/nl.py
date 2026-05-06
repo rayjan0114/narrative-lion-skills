@@ -39,10 +39,10 @@ Filmwork:
   verdict <rollId> <approved|rejected>    Set roll verdict
   golden-roll <rollId>                    Set golden roll
   decision <noteId> [--shot ID] --action A --reason R --outcome O
-  insight <noteId> --category C --title T --detail D
+  insight <noteId> --category C --tags T1,T2 --title T --detail D
   decisions <noteId> [--shot ID] [--limit N] [--offset N]
                                           List decisions
-  insights <noteId> [--category C] [--limit N] [--offset N]
+  insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]
                                           List insights (default 50)
 
 Download:

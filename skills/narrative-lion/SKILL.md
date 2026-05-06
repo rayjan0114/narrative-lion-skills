@@ -59,9 +59,9 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py verdict <rollId> <approved\|rejected>` | Set roll verdict |
 | `nl.py golden-roll <rollId>` | Set golden roll |
 | `nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O` | Log decision |
-| `nl.py insight <noteId> --category C --title T --detail D [--source-shots JSON]` | Log insight |
+| `nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]` | Log insight |
 | `nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]` | List decisions |
-| `nl.py insights <noteId> [--category C] [--limit N] [--offset N]` | List insights (default 50) |
+| `nl.py insights <noteId> [--category C] [--tag T] [--limit N] [--offset N]` | List insights (default 50) |
 | `nl.py provenance <assetId>` | Query how an asset was made |
 | `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
@@ -95,7 +95,85 @@ Threading: omit `--thread` for a new conversation, pass `--thread <id>` to conti
 
 ### Podcast
 
-`notes create --type podcast --skip-ai --content <podcast-ir-json>`: content must be podcast IR JSON, not markdown.
+Podcast notes store IR JSON in `metadata`. Content is IR, not markdown.
+
+**Create (0 credits):**
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py notes create \
+  --type podcast --skip-ai --content '<IR JSON>'
+```
+
+**Minimal IR structure:**
+```json
+{
+  "speakers": [
+    {
+      "id": "speaker_1",
+      "name": "Eva",
+      "role": "host",
+      "gender": "female",
+      "personality": "Professional, warm"
+    }
+  ],
+  "segments": [
+    {
+      "id": "seg_ax",
+      "speakerId": "speaker_1",
+      "script": "[confident] Welcome to the show.",
+      "pauseAfterMs": 300
+    },
+    {
+      "id": "seg_bq",
+      "speakerId": "speaker_1",
+      "script": "Thanks for listening.",
+      "pauseAfterMs": 0
+    }
+  ],
+  "globalSettings": {
+    "modelId": "eleven_v3",
+    "outputFormat": "mp3_44100_128",
+    "language": "en"
+  }
+}
+```
+
+**IR rules:**
+- `speakers[].id`: use `speaker_1`, `speaker_2`, etc.
+- `segments[].id`: `seg_` + 2 random lowercase letters (e.g. `seg_ax`, `seg_bq`). Must be unique.
+- `segments[].speakerId`: must reference a `speakers[].id`.
+- `script`: optional `[tag]` prefix for voice direction — `[whispering]`, `[excited]`, `[confident]`, `[pause]`, `[laughs]`. Use `...` for natural pauses with eleven_v3.
+- `pauseAfterMs`: required. 200–500 for normal, 500–800 for topic transitions.
+- Do NOT include `audio`, `audioHistory`, or `audioUnsynced` — system-managed.
+- `voiceId` is optional on speakers. If omitted, assign via Studio UI or specify from premade catalog.
+- For duo podcasts, add a second speaker with `"role": "cohost"`.
+
+**Premade voice catalog (no custom ElevenLabs key needed):**
+
+Female: Rachel (`21m00Tcm4TlvDq8ikWAM`) calm/analytical/warm, Sarah (`EXAVITQu4vr4xnSDxMaL`) warm/thoughtful, Alice (`Xb7hH8MSUJpSbSDYk0k2`) excited/passionate, Matilda (`XrExE9yKIg1WjnnlVkGX`) warm/reflective, Lily (`pFZP5JQG7iQjIQuC4Bku`) tense/serious, Emily (`LcfcDJNUP1GQjkzn1xUU`) calm/reflective.
+
+Male: Brian (`nPczCjzI2devNBz1zQrb`) calm/analytical/thoughtful, Daniel (`onwK4e9ZLuTAKqWW03F9`) serious/thoughtful, Chris (`iP95p4xoKVk53GoZ742B`) curious/playful/casual, Charlie (`IKne3meq5aSn9XLyUdCD`) playful/casual, Bill (`pqHfZKP75CvOlQylNhV4`) passionate/serious, Josh (`TxGEqnHWrfWFTfGW9XjX`) excited/passionate.
+
+**Generate TTS (requires `podcast` scope, costs credits):**
+```graphql
+mutation {
+  generateSegmentAudio(noteId: "...", segmentId: "seg_ax") {
+    segmentId audioUrl durationMs
+  }
+}
+```
+
+**AI script editing (1 credit):**
+`POST /api/podcast/edit` with `{ "noteId": "...", "prompt": "Make it more conversational" }`. Add `"segmentId": "seg_ax"` to scope to one segment. Response: `{ changes, summary }`. Not auto-applied — call `updateNote(metadata: updatedIR)` to persist.
+
+**Update IR:**
+```graphql
+mutation {
+  updateNote(noteId: "...", metadata: "<stringified IR JSON>") { id updatedAt }
+}
+```
+`noteMd` is auto-derived from IR on every `updateNote(metadata: ...)` call.
+
+**Full docs:** https://narrativelion.com/docs/podcast
 
 ---
 
@@ -162,12 +240,12 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py insights <noteId>
 Spawn a sub-agent (via the Agent tool) to review relevant insights before writing or modifying a video prompt. This avoids loading raw insight data into the main context.
 
 Sub-agent instructions:
-1. Run `nl.py insights <noteId> --category prompt --json`
+1. Run `nl.py insights <noteId> --category video --json` (or `--category image` for image generation)
 2. Read through all returned insights
 3. Return a short bullet list of insights relevant to the current shot's content (camera movement, character action, scene type)
 4. If no insights are relevant, return "No relevant prompt insights found"
 
-Do the same with `--category model` if switching models or debugging a failed roll.
+Use `--tag` to narrow results when you know the topic (e.g. `--tag motion-direction`, `--tag start-end-pair`).
 
 ### The Production Loop
 
@@ -261,7 +339,11 @@ Actions: `approve_golden`, `approve_with_reservation`, `plan_revision`, `switch_
 
 **Insights** — log when you discover reusable knowledge:
 
-Categories: `prompt`, `model`, `workflow`, `continuity`.
+Categories (modality): `image`, `video`, `voice`.
+
+Tags (required, at least 1): `push-in`, `pull-out`, `pan`, `locked`, `timelapse`, `tracking`, `start-end-pair`, `single-frame`, `multi-keyframe`, `walking`, `talking`, `crowd`, `solo`, `reaction`, `insert`, `motion-direction`, `style-consistency`, `lip-sync`, `compositing`, `kling`, `wan`, `gpt-image`, `elevenlabs`, `scoring`, `review`.
+
+Example: `nl.py insight <noteId> --category video --tags "motion-direction,walking" --title "..." --detail "..."`
 
 ### Debug Playbooks
 
@@ -269,7 +351,7 @@ Categories: `prompt`, `model`, `workflow`, `continuity`.
 
 1. **Do not re-roll.** Analyze first.
 2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried?
-3. `nl.py insights <noteId> --category model` — known issues with this model?
+3. `nl.py insights <noteId> --tag kling` (or the relevant model tag) — known issues with this model?
 4. Check scorecard — which dimension scored lowest? That's your fix target.
 5. `nl.py overview <noteId>` — any done shots? Compare golden rolls' prompts.
 6. Log: `nl.py decision <noteId> --shot <shotUUID> --action analyze_failure --reason "..." --outcome "plan: ..."`
@@ -283,7 +365,7 @@ Categories: `prompt`, `model`, `workflow`, `continuity`.
 2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried so far?
 3. `nl.py insights <noteId>` — is this pattern documented?
 4. Consider: switch model, rewrite prompt, change reference frames, simplify the shot.
-5. Log: `nl.py insight <noteId> --category workflow --title "..." --detail "Shot X required N attempts because..."`
+5. Log: `nl.py insight <noteId> --category video --tags "scoring,review" --title "..." --detail "Shot X required N attempts because..."`
 6. Log: `nl.py decision <noteId> --shot <shotUUID> --action strategy_change --reason "..." --outcome "new approach: ..."`
 7. Then try the new approach.
 
