@@ -32,7 +32,10 @@ def _headers() -> dict[str, str]:
 
 
 def graphql(query: str, variables: dict | None = None) -> dict:
-    """Execute a GraphQL query/mutation. Returns the full response dict."""
+    """Execute a GraphQL query/mutation. Returns data dict.
+
+    Agent hints from extensions.agentHints are printed automatically.
+    """
     body = {"query": query}
     if variables:
         body["variables"] = variables
@@ -71,7 +74,23 @@ def graphql(query: str, variables: dict | None = None) -> dict:
             print(f"Error: {prefix}{msg}", file=sys.stderr)
         sys.exit(1)
 
+    hints = result.get("extensions", {}).get("agentHints", [])
+    if hints:
+        print_hints(hints)
     return result.get("data", {})
+
+
+def print_hints(hints: list[dict]) -> None:
+    """Print agent hints from extensions.agentHints."""
+    if not hints:
+        return
+    print()
+    marks = {"high": "!", "medium": "*", "low": "~"}
+    for h in hints:
+        mark = marks.get(h.get("priority", "low"), "~")
+        print(f"  [{mark}] {h.get('message', '')}")
+        if h.get("action"):
+            print(f"      {h['action']}")
 
 
 def rest_get(path: str) -> dict:
