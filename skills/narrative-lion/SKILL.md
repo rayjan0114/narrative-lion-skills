@@ -306,6 +306,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload-roll <shotUUID> /path/to/vide
 
 #### Review & Score
 
+For frame extraction strategy, scoring rubric, decision matrix, and report format, follow the **ai-video-review** skill. Below is the CLI integration.
+
 Score across 5 weighted dimensions (max 55 points):
 
 | Dimension | Flag | Weight |
