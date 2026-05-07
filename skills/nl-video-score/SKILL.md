@@ -1,5 +1,5 @@
 ---
-name: ai-video-review
+name: nl-video-score
 description: >
   Review and score AI-generated video shots (Kling / Veo / Sora / Runway / Luma / Wan / Seedance / etc.)
   by extracting strategic frames with ffmpeg, scoring across 5 weighted dimensions on a 55-point scale,
@@ -10,7 +10,7 @@ metadata:
   version: 1.0.0
 ---
 
-# AI Video Review
+# NL Video Score
 
 Claude cannot play video, but it CAN read image frames. This skill extracts frames at tactical timestamps, compares them against reference frames (if provided), and produces a weighted scorecard so the user can decide: ship, re-roll, or switch model.
 
