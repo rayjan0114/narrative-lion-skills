@@ -875,7 +875,7 @@ def set_provenance(args: list[str], json_mode: bool = False) -> None:
 
 def shot_create(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py shot-create <noteId> --label L [--duration N] [--status S] [--after LABEL]"); return
+        print("Usage: nl.py shot-create <noteId> [--label L] [--after LABEL] [--duration N] [--status S]"); return
 
     note_id = args[0]
     label = None; duration = None; status = None; after = None
@@ -893,45 +893,62 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
         else:
             i += 1
 
-    if not label:
-        print("Error: --label is required", file=sys.stderr); return
+    if not label and not after:
+        print("Error: either --label L or --after LABEL is required", file=sys.stderr); return
 
-    # Determine sequenceOrder
-    sequence_order = 999
-    if after is not None:
-        gql_ov = """
-        query($noteId: String!) {
-          filmworkOverview(noteId: $noteId) {
-            shots { shotId }
+    if after and not label:
+        # Auto-label mode: backend computes label + sequenceOrder
+        gql = """
+        mutation($noteId: String!, $afterLabel: String!) {
+          createFilmworkShot(noteId: $noteId, afterLabel: $afterLabel) {
+            id shotId sequenceOrder status
           }
         }"""
-        ov_data = graphql(gql_ov, {"noteId": note_id})
-        ov = ov_data.get("filmworkOverview")
-        if not ov:
-            print(f"Filmwork not found: {note_id}", file=sys.stderr); return
-        shots = ov.get("shots", [])
-        shot_labels = [s.get("shotId", "") for s in shots]
-        if after in shot_labels:
-            after_idx = shot_labels.index(after)
-            sequence_order = after_idx + 1  # insert right after (0-based index + 1 = 1-based position after)
-        else:
-            print(f"Warning: --after label '{after}' not found; appending at end.", file=sys.stderr)
+        data = graphql(gql, {"noteId": note_id, "afterLabel": after})
+        created = data.get("createFilmworkShot", {})
+        shot_uuid = created.get("id")
+        if not shot_uuid:
+            print("Error: Shot creation failed — no id returned", file=sys.stderr); return
+        computed_label = created.get("shotId", "?")
+        print(f"  Created shot {computed_label} (id: {shot_uuid}, after: {after})")
+        if json_mode:
+            print(as_json(created))
+    else:
+        # Manual mode: --label provided, sequenceOrder from --after or default
+        sequence_order = 999
+        if after is not None:
+            gql_ov = """
+            query($noteId: String!) {
+              filmworkOverview(noteId: $noteId) {
+                shots { shotId }
+              }
+            }"""
+            ov_data = graphql(gql_ov, {"noteId": note_id})
+            ov = ov_data.get("filmworkOverview")
+            if not ov:
+                print(f"Filmwork not found: {note_id}", file=sys.stderr); return
+            shots = ov.get("shots", [])
+            shot_labels = [s.get("shotId", "") for s in shots]
+            if after in shot_labels:
+                after_idx = shot_labels.index(after)
+                sequence_order = after_idx + 1
+            else:
+                print(f"Warning: --after label '{after}' not found; appending at end.", file=sys.stderr)
 
-    # Create the shot
-    gql = """
-    mutation($noteId: String!, $shotId: String!, $sequenceOrder: Int!) {
-      createFilmworkShot(noteId: $noteId, shotId: $shotId, sequenceOrder: $sequenceOrder) {
-        id status
-      }
-    }"""
-    data = graphql(gql, {"noteId": note_id, "shotId": label, "sequenceOrder": sequence_order})
-    created = data.get("createFilmworkShot", {})
-    shot_uuid = created.get("id")
-
-    if not shot_uuid:
-        print("Error: Shot creation failed — no id returned", file=sys.stderr); return
-
-    print(f"  Created shot {label} (id: {shot_uuid})")
+        gql = """
+        mutation($noteId: String!, $shotId: String!, $sequenceOrder: Int!) {
+          createFilmworkShot(noteId: $noteId, shotId: $shotId, sequenceOrder: $sequenceOrder) {
+            id status
+          }
+        }"""
+        data = graphql(gql, {"noteId": note_id, "shotId": label, "sequenceOrder": sequence_order})
+        created = data.get("createFilmworkShot", {})
+        shot_uuid = created.get("id")
+        if not shot_uuid:
+            print("Error: Shot creation failed — no id returned", file=sys.stderr); return
+        print(f"  Created shot {label} (id: {shot_uuid})")
+        if json_mode:
+            print(as_json(created))
 
     # Apply optional status / duration via shot_update
     update_args = [shot_uuid]

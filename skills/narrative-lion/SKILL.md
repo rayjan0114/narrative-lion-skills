@@ -268,6 +268,8 @@ Prepare → Preflight → Generate → Review → Act on verdict
 
 #### Prepare
 
+**Any asset strategy change (swap start↔end, replace frame, regenerate, change approach) = log a `strategy_change` decision before proceeding.**
+
 1. Upload reference assets with provenance:
    ```bash
    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> start_frame /path/to/frame.png \
@@ -284,6 +286,8 @@ Prepare → Preflight → Generate → Review → Act on verdict
    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py upload <shotUUID> ref_image /path/to/ref.png \
      --label "Character ref" --method user_upload --user-note "From LoRA training set"
    ```
+
+**After uploading, ask: did I just make a significant decision (swap, replace, new approach)?** If yes, log it with `nl.py decision` before moving on.
 
 #### Preflight
 
