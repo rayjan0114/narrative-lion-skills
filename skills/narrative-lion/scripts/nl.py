@@ -34,6 +34,8 @@ Filmwork:
   preflight <noteId> <label>              Preflight check only
   upload <shotId> <type> <file> [--label] Upload asset (3-step)
   upload-roll <shotId> <file> [--seed N --model M --prompt-version N]
+  shot-create <noteId> --label L [--duration N] [--status S] [--after LABEL]
+                                          Create a new shot (append or insert after LABEL)
   shot-update <shotId> [--status S] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--duration N]
                                           Update shot status / fields
   score <rollId> --face N --expr N --motion N --stability N --style N
@@ -73,6 +75,7 @@ COMMANDS = {
     "preflight": filmwork.preflight,
     "upload": filmwork.upload_asset,
     "upload-roll": filmwork.upload_roll,
+    "shot-create": filmwork.shot_create,
     "shot-update": filmwork.shot_update,
     "score": filmwork.score,
     "verdict": filmwork.verdict,
