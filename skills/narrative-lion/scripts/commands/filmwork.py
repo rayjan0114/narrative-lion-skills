@@ -26,7 +26,7 @@ def overview(args: list[str], json_mode: bool = False) -> None:
         noteId title totalShots
         statusCounts { notStarted assetPrep ready generating review done blocked }
         shots {
-          shotId status
+          shotId status lastDecisionAt
           assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo refImage total }
           rollSummary { total pending approved rejected bestScore goldenRollId }
           preflightStatus { ready }
@@ -49,8 +49,8 @@ def overview(args: list[str], json_mode: bool = False) -> None:
     print()
 
     shots = ov.get("shots", [])
-    print(f"  {'Shot':<6} {'Status':<12} {'Assets':<8} {'Rolls':<8} {'Best':<6} {'PF'}")
-    print(f"  {'----':<6} {'------':<12} {'------':<8} {'-----':<8} {'----':<6} {'--'}")
+    print(f"  {'Shot':<6} {'Status':<12} {'Assets':<8} {'Rolls':<8} {'Best':<6} {'PF':<4} {'Dec'}")
+    print(f"  {'----':<6} {'------':<12} {'------':<8} {'-----':<8} {'----':<6} {'--':<4} {'---'}")
     for s in shots:
         label = s.get("shotId", "?")
         status = s.get("status", "?")
@@ -61,7 +61,9 @@ def overview(args: list[str], json_mode: bool = False) -> None:
         roll_total = rs.get("total", 0)
         best = rs.get("bestScore") or "-"
         ready = "Y" if pf.get("ready") else "N"
-        print(f"  {label:<6} {status:<12} {asset_total:<8} {roll_total:<8} {best:<6} {ready}")
+        last_dec = s.get("lastDecisionAt")
+        dec = last_dec[:10] if last_dec else ("-" if status == "not_started" else "!")
+        print(f"  {label:<6} {status:<12} {asset_total:<8} {roll_total:<8} {best:<6} {ready:<4} {dec}")
 
     links = ov.get("linkedNotes", [])
     if links:
@@ -80,6 +82,7 @@ def shot(args: list[str], json_mode: bool = False) -> None:
       filmworkShotByLabel(noteId: $noteId, shotLabel: $shotLabel) {
         id shotId status targetDurationSec dialogue
         directionJson promptsJson modelConfigJson blockerJson
+        lastActivityAt lastDecisionAt
         preflightStatus { ready checks { name passed detail } }
         assetCounts { startFrame endFrame keyframe dialogue sfx paddedAudio refVideo refImage total }
         rollSummary { total pending approved rejected bestScore goldenRollId }
@@ -115,6 +118,12 @@ def shot(args: list[str], json_mode: bool = False) -> None:
             print(f"  BLOCKER: {b.get('description', blocker)}")
         except (json.JSONDecodeError, TypeError):
             print(f"  BLOCKER: {blocker}")
+
+    last_dec = s.get("lastDecisionAt")
+    if last_dec:
+        print(f"  Last decision: {last_dec[:16]}")
+    elif s.get("status") != "not_started":
+        print(f"  Last decision: NONE — log decisions to aid debugging")
 
     assets = s.get("assets", [])
     if assets:
