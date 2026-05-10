@@ -789,12 +789,12 @@ def lineage(args: list[str], json_mode: bool = False) -> None:
 
     print(f"  Lineage edges ({len(edges)}):")
     for e in edges:
-        child = e.get("childAssetId", "?")[:12]
+        child = (e.get("childAssetId") or "?")[:12]
         if e.get("parentAssetId"):
             parent = e["parentAssetId"][:12]
             print(f"    {parent}.. --[{e['role']}]--> {child}..")
         else:
-            print(f"    ext:{e.get('parentExternalRef', '?')} --[{e['role']}]--> {child}..")
+            print(f"    ext:{(e.get('parentExternalRef') or '?')} --[{e['role']}]--> {child}..")
 
 
 def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
