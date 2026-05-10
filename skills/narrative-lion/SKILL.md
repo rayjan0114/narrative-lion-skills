@@ -62,9 +62,11 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]` | Log insight |
 | `nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]` | List decisions |
 | `nl.py insights [noteId] [--category C] [--tag T] [--limit N] [--offset N]` | List insights (cross-note if no noteId) |
+| `nl.py prompt <noteId> <shotLabel> [--version N]` | List prompt versions or show full prompt for a version |
 | `nl.py provenance <assetId>` | Query how an asset was made |
-| `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG |
+| `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG (shows parent→child direction) |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
+| `nl.py roll-context <rollId>` | One-shot roll debug: prompt, inputs, provenance |
 | `nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--parent JSON ...]` | Set/update provenance after the fact |
 | `nl.py download <assetId> <output_path>` | Download a single asset to local file |
 | `nl.py download-shot <noteId> <label> [--dir D] [--all]` | Download golden assets for a shot (--all for every version) |
@@ -367,20 +369,22 @@ Example: `nl.py insight <noteId> --category video --tags "motion-direction,walki
 #### Roll scored < 30
 
 1. **Do not re-roll.** Analyze first.
-2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried?
-3. `nl.py insights <noteId> --tag kling` (or the relevant model tag) — known issues with this model?
-4. Check scorecard — which dimension scored lowest? That's your fix target.
-5. `nl.py overview <noteId>` — any done shots? Compare golden rolls' prompts.
-6. Log: `nl.py decision <noteId> --shot <shotUUID> --action analyze_failure --reason "..." --outcome "plan: ..."`
-7. Now fix and re-roll.
+2. `nl.py roll-context <rollId>` — see the full picture: prompt, input assets, provenance, score.
+3. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried?
+4. `nl.py insights <noteId> --tag kling` (or the relevant model tag) — known issues with this model?
+5. Check scorecard — which dimension scored lowest? That's your fix target.
+6. `nl.py overview <noteId>` — any done shots? Compare golden rolls' prompts.
+7. Log: `nl.py decision <noteId> --shot <shotUUID> --action analyze_failure --reason "..." --outcome "plan: ..."`
+8. Now fix and re-roll.
 
 #### 3+ rejected rolls on same shot
 
 **Stop. Do not re-roll.**
 
-1. Collect all rolls' issues — find the common pattern.
-2. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried so far?
-3. `nl.py insights <noteId>` — is this pattern documented?
+1. `nl.py roll-context <rollId>` for each rejected roll — compare prompts, inputs, and provenance.
+2. Find the common pattern across rolls' issues.
+3. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried so far?
+4. `nl.py insights <noteId>` — is this pattern documented?
 4. Consider: switch model, rewrite prompt, change reference frames, simplify the shot.
 5. Log: `nl.py insight <noteId> --category video --tags "scoring,review" --title "..." --detail "Shot X required N attempts because..."`
 6. Log: `nl.py decision <noteId> --shot <shotUUID> --action strategy_change --reason "..." --outcome "new approach: ..."`
@@ -416,9 +420,10 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py set-provenance <assetId> \
 
 **Query provenance and lineage**:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py provenance <assetId>
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py lineage <assetId> --depth 3
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py roll-snapshot <rollId>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py roll-context <rollId>         # best starting point — shows prompt, inputs, and provenance in one call
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py provenance <assetId>          # how was this specific asset made?
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py lineage <assetId> --depth 3   # full DAG with parent→child direction
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py prompt <noteId> <label> --version 2  # view a specific prompt version
 ```
 
 #### Methods

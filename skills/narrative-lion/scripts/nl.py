@@ -53,10 +53,15 @@ Download:
   download-shot <noteId> <label> [--dir D] [--all]
       Download golden assets for a shot (or --all versions)
 
+Prompts:
+  prompt <noteId> <shotLabel> [--version N]
+                                          List prompt versions or show full prompt
+
 Provenance:
   provenance <assetId>                    Query asset provenance
   lineage <assetId> [--depth N]           Query lineage DAG edges
   roll-snapshot <rollId>                  What assets were used to generate a roll
+  roll-context <rollId>                   Full roll debug context (prompt, inputs, provenance)
   set-provenance <assetId> --method M [--model M] [--prompt P] [--parent JSON ...]
 
 Flags:
@@ -84,9 +89,11 @@ COMMANDS = {
     "insight": filmwork.add_insight,
     "decisions": filmwork.list_decisions,
     "insights": filmwork.list_insights,
+    "prompt": filmwork.prompt_view,
     "provenance": filmwork.provenance,
     "lineage": filmwork.lineage,
     "roll-snapshot": filmwork.roll_snapshot,
+    "roll-context": filmwork.roll_context,
     "set-provenance": filmwork.set_provenance,
     "download": filmwork.download_asset,
     "download-shot": filmwork.download_shot,

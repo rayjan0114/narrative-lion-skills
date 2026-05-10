@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import sys
+import textwrap
 
 from lib.client import graphql, upload_binary, download_binary, BASE_URL
 from lib.formatters import as_json, status_bar
@@ -727,7 +728,7 @@ def provenance(args: list[str], json_mode: bool = False) -> None:
     query($assetId: String!) {
       assetProvenance(assetId: $assetId) {
         assetId method model prompt modelParamsJson userNote createdAt
-        parents { id parentAssetId parentExternalRef role createdAt }
+        parents { id childAssetId parentAssetId parentExternalRef role createdAt }
       }
     }"""
     data = graphql(gql, {"assetId": asset_id})
@@ -744,8 +745,8 @@ def provenance(args: list[str], json_mode: bool = False) -> None:
     if prov.get("model"):
         print(f"  Model:   {prov['model']}")
     if prov.get("prompt"):
-        prompt_preview = prov["prompt"][:200] + ("..." if len(prov["prompt"]) > 200 else "")
-        print(f"  Prompt:  {prompt_preview}")
+        print("  Prompt:")
+        print(textwrap.fill(prov["prompt"], width=100, initial_indent="    ", subsequent_indent="    "))
     if prov.get("modelParamsJson"):
         print(f"  Params:  {prov['modelParamsJson']}")
     if prov.get("userNote"):
@@ -774,7 +775,7 @@ def lineage(args: list[str], json_mode: bool = False) -> None:
     gql = """
     query($assetId: String!, $maxDepth: Int) {
       assetLineageTree(assetId: $assetId, maxDepth: $maxDepth) {
-        id parentAssetId parentExternalRef role createdAt
+        id childAssetId parentAssetId parentExternalRef role createdAt
       }
     }"""
     data = graphql(gql, {"assetId": asset_id, "maxDepth": max_depth})
@@ -788,10 +789,12 @@ def lineage(args: list[str], json_mode: bool = False) -> None:
 
     print(f"  Lineage edges ({len(edges)}):")
     for e in edges:
+        child = e.get("childAssetId", "?")[:12]
         if e.get("parentAssetId"):
-            print(f"    [{e['role']}] asset:{e['parentAssetId']}")
+            parent = e["parentAssetId"][:12]
+            print(f"    {parent}.. --[{e['role']}]--> {child}..")
         else:
-            print(f"    [{e['role']}] ext:{e.get('parentExternalRef', '?')}")
+            print(f"    ext:{e.get('parentExternalRef', '?')} --[{e['role']}]--> {child}..")
 
 
 def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
@@ -818,6 +821,125 @@ def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
     for s in snapshots:
         asset_ref = f" (id:{s['assetId']})" if s.get("assetId") else " (deleted)"
         print(f"    {s['assetType']} v{s['version']}{asset_ref}")
+
+
+def prompt_view(args: list[str], json_mode: bool = False) -> None:
+    if len(args) < 2:
+        print("Usage: nl.py prompt <noteId> <shotLabel> [--version N]"); return
+
+    note_id = args[0]
+    shot_label = args[1]
+    version = None
+    if "--version" in args:
+        idx = args.index("--version")
+        if idx + 1 < len(args):
+            try:
+                version = int(args[idx + 1])
+            except ValueError:
+                print("Error: --version must be an integer"); return
+
+    gql = """
+    query($noteId: String!, $shotLabel: String!) {
+      filmworkShotByLabel(noteId: $noteId, shotLabel: $shotLabel) {
+        shotId promptsJson
+      }
+    }"""
+    data = graphql(gql, {"noteId": note_id, "shotLabel": shot_label})
+    s = data.get("filmworkShotByLabel")
+    if not s:
+        print(f"Shot {shot_label} not found in {note_id}"); return
+
+    prompts_raw = s.get("promptsJson")
+    if not prompts_raw:
+        print("  No prompts defined for this shot."); return
+
+    try:
+        prompts = json.loads(prompts_raw)
+    except (json.JSONDecodeError, TypeError):
+        print("  Error: promptsJson is not valid JSON."); return
+
+    if json_mode:
+        print(as_json(prompts)); return
+
+    if version is not None:
+        match = next((p for p in prompts if p.get("version") == version), None)
+        if not match:
+            available = [p.get("version") for p in prompts]
+            print(f"  Version {version} not found. Available: {available}"); return
+        active = " [ACTIVE]" if match.get("isActive") else ""
+        print(f"  Prompt v{version}{active}  ({s.get('shotId')})")
+        print()
+        print(textwrap.fill(match.get("body", ""), width=100, initial_indent="  ", subsequent_indent="  "))
+        if match.get("negativePrompt"):
+            print()
+            print("  Negative:")
+            print(textwrap.fill(match["negativePrompt"], width=100, initial_indent="    ", subsequent_indent="    "))
+        if match.get("modelTarget"):
+            print(f"\n  Model target: {match['modelTarget']}")
+    else:
+        print(f"  Prompts for shot {s.get('shotId')} ({len(prompts)} version(s)):")
+        print()
+        for p in prompts:
+            v = p.get("version", "?")
+            active = " [ACTIVE]" if p.get("isActive") else ""
+            body = p.get("body", "")
+            first_line = body.split("\n")[0][:80]
+            ellipsis = "..." if len(body.split("\n")[0]) > 80 or len(body.split("\n")) > 1 else ""
+            print(f"  v{v}{active}: {first_line}{ellipsis}")
+
+
+def roll_context(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py roll-context <rollId>"); return
+
+    roll_id = args[0]
+    gql = """
+    query($rollId: String!) {
+      rollContext(rollId: $rollId) {
+        id rollNumber shotId shotLabel seed modelUsed promptVersion
+        totalScore verdict isGolden generatedAt scorecardJson issues
+        promptBody promptNegative
+        inputs { assetType label version assetId method model }
+      }
+    }"""
+    data = graphql(gql, {"rollId": roll_id})
+    rc = data.get("rollContext")
+
+    if json_mode:
+        print(as_json(rc)); return
+
+    if not rc:
+        print("  Roll not found."); return
+
+    golden = " [GOLDEN]" if rc.get("isGolden") else ""
+    print(f"Roll #{rc['rollNumber']} -- {rc['shotLabel']} (shot: {rc['shotId'][:12]}..){golden}")
+    print(f"  Verdict:   {rc['verdict']}")
+    print(f"  Score:     {rc.get('totalScore') or '-'}")
+    print(f"  Model:     {rc.get('modelUsed') or '?'}  seed={rc.get('seed') or '?'}  prompt_v={rc.get('promptVersion') or '?'}")
+    print(f"  Generated: {rc.get('generatedAt', '')[:16]}")
+
+    if rc.get("issues"):
+        print(f"  Issues:    {rc['issues']}")
+
+    if rc.get("promptBody"):
+        print(f"\n  Prompt (v{rc.get('promptVersion') or '?'}):")
+        print(textwrap.fill(rc["promptBody"], width=100, initial_indent="    ", subsequent_indent="    "))
+    if rc.get("promptNegative"):
+        print(f"\n  Negative:")
+        print(textwrap.fill(rc["promptNegative"], width=100, initial_indent="    ", subsequent_indent="    "))
+
+    inputs = rc.get("inputs", [])
+    if inputs:
+        print(f"\n  Input Assets ({len(inputs)}):")
+        for inp in inputs:
+            label_str = f" [{inp['label']}]" if inp.get("label") else ""
+            asset_ref = f" id:{inp['assetId'][:12]}.." if inp.get("assetId") else " (deleted)"
+            prov_str = ""
+            if inp.get("method"):
+                prov_str = f" via {inp['method']}"
+                if inp.get("model"):
+                    prov_str += f"/{inp['model']}"
+            print(f"    {inp['assetType']}{label_str} v{inp['version']}{asset_ref}{prov_str}")
 
 
 def set_provenance(args: list[str], json_mode: bool = False) -> None:
