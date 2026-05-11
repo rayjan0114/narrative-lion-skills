@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import mimetypes
 import os
@@ -1208,3 +1209,315 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
 
     if json_mode:
         print(as_json(results))
+
+
+# ---------------------------------------------------------------------------
+# Diff
+# ---------------------------------------------------------------------------
+
+_ANSI_RED = "\033[31m"
+_ANSI_GREEN = "\033[32m"
+_ANSI_CYAN = "\033[36m"
+_ANSI_DIM = "\033[2m"
+_ANSI_BOLD = "\033[1m"
+_ANSI_RESET = "\033[0m"
+
+
+def _use_color() -> bool:
+    return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
+
+
+def _colorize_diff(lines: list[str]) -> list[str]:
+    if not _use_color():
+        return lines
+    out = []
+    for line in lines:
+        if line.startswith("---") or line.startswith("+++"):
+            out.append(f"{_ANSI_BOLD}{line}{_ANSI_RESET}")
+        elif line.startswith("@@"):
+            out.append(f"{_ANSI_CYAN}{line}{_ANSI_RESET}")
+        elif line.startswith("-"):
+            out.append(f"{_ANSI_RED}{line}{_ANSI_RESET}")
+        elif line.startswith("+"):
+            out.append(f"{_ANSI_GREEN}{line}{_ANSI_RESET}")
+        else:
+            out.append(line)
+    return out
+
+
+def _wrap_for_diff(text: str, width: int = 80) -> list[str]:
+    """Wrap long text into lines for readable diffs."""
+    lines = []
+    for paragraph in text.split("\n"):
+        if len(paragraph) <= width:
+            lines.append(paragraph)
+        else:
+            lines.extend(textwrap.wrap(paragraph, width=width))
+    return lines
+
+
+def _fetch_prompts(note_id: str, shot_label: str) -> list[dict] | None:
+    gql = """
+    query($noteId: String!, $shotLabel: String!) {
+      filmworkShotByLabel(noteId: $noteId, shotLabel: $shotLabel) {
+        shotId promptsJson
+      }
+    }"""
+    data = graphql(gql, {"noteId": note_id, "shotLabel": shot_label})
+    s = data.get("filmworkShotByLabel")
+    if not s:
+        print(f"Shot {shot_label} not found in {note_id}", file=sys.stderr)
+        return None
+    raw = s.get("promptsJson")
+    if not raw:
+        print("No prompts defined for this shot.", file=sys.stderr)
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        print("Error: promptsJson is not valid JSON.", file=sys.stderr)
+        return None
+
+
+def prompt_diff(args: list[str], json_mode: bool = False) -> None:
+    """Compare two prompt versions side by side with unified diff."""
+    if len(args) < 2:
+        print("Usage: nl.py prompt-diff <noteId> <shotLabel> --from N --to M"); return
+
+    note_id = args[0]
+    shot_label = args[1]
+    from_v: int | None = None
+    to_v: int | None = None
+
+    i = 2
+    while i < len(args):
+        if args[i] == "--from" and i + 1 < len(args):
+            from_v = int(args[i + 1]); i += 2
+        elif args[i] == "--to" and i + 1 < len(args):
+            to_v = int(args[i + 1]); i += 2
+        else:
+            i += 1
+
+    if from_v is None or to_v is None:
+        print("Error: both --from N and --to M are required.", file=sys.stderr); return
+
+    prompts = _fetch_prompts(note_id, shot_label)
+    if prompts is None:
+        return
+
+    old = next((p for p in prompts if p.get("version") == from_v), None)
+    new = next((p for p in prompts if p.get("version") == to_v), None)
+
+    if not old:
+        print(f"Version {from_v} not found. Available: {[p.get('version') for p in prompts]}", file=sys.stderr); return
+    if not new:
+        print(f"Version {to_v} not found. Available: {[p.get('version') for p in prompts]}", file=sys.stderr); return
+
+    if json_mode:
+        print(as_json({"from": old, "to": new})); return
+
+    old_model = old.get("modelTarget", "?")
+    new_model = new.get("modelTarget", "?")
+
+    # Header
+    print(f"  Prompt diff: v{from_v} -> v{to_v}  ({shot_label})")
+    if old_model != new_model:
+        print(f"  Model: {old_model} -> {new_model}")
+    print()
+
+    # Body diff
+    old_lines = _wrap_for_diff(old.get("body", ""))
+    new_lines = _wrap_for_diff(new.get("body", ""))
+    diff = list(difflib.unified_diff(
+        old_lines, new_lines,
+        fromfile=f"prompt v{from_v} ({old_model})",
+        tofile=f"prompt v{to_v} ({new_model})",
+        lineterm="",
+    ))
+
+    if diff:
+        for line in _colorize_diff(diff):
+            print(f"  {line}")
+    else:
+        print("  (body unchanged)")
+
+    # Negative prompt diff
+    old_neg = old.get("negativePrompt", "")
+    new_neg = new.get("negativePrompt", "")
+    if old_neg != new_neg:
+        print()
+        old_neg_lines = _wrap_for_diff(old_neg) if old_neg else ["(none)"]
+        new_neg_lines = _wrap_for_diff(new_neg) if new_neg else ["(none)"]
+        neg_diff = list(difflib.unified_diff(
+            old_neg_lines, new_neg_lines,
+            fromfile="negative v" + str(from_v),
+            tofile="negative v" + str(to_v),
+            lineterm="",
+        ))
+        if neg_diff:
+            for line in _colorize_diff(neg_diff):
+                print(f"  {line}")
+
+
+def _fetch_roll_context(roll_id: str) -> dict | None:
+    gql = """
+    query($rollId: String!) {
+      rollContext(rollId: $rollId) {
+        id rollNumber shotId shotLabel seed modelUsed promptVersion
+        totalScore verdict isGolden generatedAt scorecardJson
+        promptBody promptNegative
+        inputs { assetType label version assetId method model }
+      }
+    }"""
+    data = graphql(gql, {"rollId": roll_id})
+    return data.get("rollContext")
+
+
+def roll_diff(args: list[str], json_mode: bool = False) -> None:
+    """Compare two rolls: metadata, prompt, and input assets."""
+    if len(args) < 2:
+        print("Usage: nl.py roll-diff <rollId-A> <rollId-B>"); return
+
+    roll_a_id = args[0]
+    roll_b_id = args[1]
+
+    a = _fetch_roll_context(roll_a_id)
+    b = _fetch_roll_context(roll_b_id)
+
+    if not a:
+        print(f"Roll not found: {roll_a_id}", file=sys.stderr); return
+    if not b:
+        print(f"Roll not found: {roll_b_id}", file=sys.stderr); return
+
+    if json_mode:
+        print(as_json({"a": a, "b": b})); return
+
+    color = _use_color()
+
+    def _changed(label: str, va: str, vb: str) -> None:
+        if va == vb:
+            print(f"  {label:<12} {va}")
+        else:
+            arrow = f"{va} -> {vb}"
+            if color:
+                arrow = f"{_ANSI_RED}{va}{_ANSI_RESET} -> {_ANSI_GREEN}{vb}{_ANSI_RESET}"
+            print(f"  {label:<12} {arrow}")
+
+    # Header
+    ga = " [GOLDEN]" if a.get("isGolden") else ""
+    gb = " [GOLDEN]" if b.get("isGolden") else ""
+    print(f"  Roll #{a['rollNumber']}{ga} vs Roll #{b['rollNumber']}{gb}  ({a.get('shotLabel', '?')})")
+    print(f"  {'─' * 50}")
+
+    # Metadata comparison
+    _changed("Model", a.get("modelUsed") or "?", b.get("modelUsed") or "?")
+    _changed("Seed", str(a.get("seed") or "?"), str(b.get("seed") or "?"))
+    _changed("Prompt", f"v{a.get('promptVersion') or '?'}", f"v{b.get('promptVersion') or '?'}")
+    _changed("Verdict", a.get("verdict", "?"), b.get("verdict", "?"))
+
+    # Score comparison with delta
+    sa = a.get("totalScore")
+    sb = b.get("totalScore")
+    sa_str = str(sa) if sa is not None else "-"
+    sb_str = str(sb) if sb is not None else "-"
+    if sa is not None and sb is not None and sa != sb:
+        delta = sb - sa
+        sign = "+" if delta > 0 else ""
+        delta_str = f" ({sign}{delta})"
+        if color:
+            delta_color = _ANSI_GREEN if delta > 0 else _ANSI_RED
+            print(f"  {'Score':<12} {_ANSI_RED}{sa_str}{_ANSI_RESET} -> {_ANSI_GREEN}{sb_str}{_ANSI_RESET}{delta_color}{delta_str}{_ANSI_RESET}")
+        else:
+            print(f"  {'Score':<12} {sa_str} -> {sb_str}{delta_str}")
+    else:
+        _changed("Score", sa_str, sb_str)
+
+    # Scorecard breakdown if available
+    sc_a = _parse_scorecard(a.get("scorecardJson"))
+    sc_b = _parse_scorecard(b.get("scorecardJson"))
+    if sc_a and sc_b:
+        dims = ["faceLikeness", "expression", "motionNatural", "stability", "styleMatch"]
+        dim_labels = {"faceLikeness": "face", "expression": "expr", "motionNatural": "motion", "stability": "stab", "styleMatch": "style"}
+        parts = []
+        for d in dims:
+            va = sc_a.get(d, "?")
+            vb = sc_b.get(d, "?")
+            if va != vb:
+                parts.append(f"{dim_labels[d]}:{va}->{vb}")
+            else:
+                parts.append(f"{dim_labels[d]}:{va}")
+        print(f"  {'Scorecard':<12} {', '.join(parts)}")
+
+    # Prompt diff
+    body_a = a.get("promptBody") or ""
+    body_b = b.get("promptBody") or ""
+    if body_a != body_b:
+        print(f"\n  {'─' * 20} Prompt Diff {'─' * 20}")
+        diff_lines = list(difflib.unified_diff(
+            _wrap_for_diff(body_a), _wrap_for_diff(body_b),
+            fromfile=f"Roll #{a['rollNumber']} prompt v{a.get('promptVersion', '?')}",
+            tofile=f"Roll #{b['rollNumber']} prompt v{b.get('promptVersion', '?')}",
+            lineterm="",
+        ))
+        for line in _colorize_diff(diff_lines):
+            print(f"  {line}")
+
+    # Negative prompt diff
+    neg_a = a.get("promptNegative") or ""
+    neg_b = b.get("promptNegative") or ""
+    if neg_a != neg_b:
+        print(f"\n  {'─' * 20} Negative Diff {'─' * 18}")
+        neg_diff = list(difflib.unified_diff(
+            _wrap_for_diff(neg_a) if neg_a else ["(none)"],
+            _wrap_for_diff(neg_b) if neg_b else ["(none)"],
+            fromfile=f"Roll #{a['rollNumber']}", tofile=f"Roll #{b['rollNumber']}",
+            lineterm="",
+        ))
+        for line in _colorize_diff(neg_diff):
+            print(f"  {line}")
+
+    # Input assets diff
+    inputs_a = a.get("inputs", [])
+    inputs_b = b.get("inputs", [])
+    if inputs_a or inputs_b:
+        print(f"\n  {'─' * 20} Input Assets {'─' * 19}")
+        map_a = {inp["assetType"] + (f"[{inp['label']}]" if inp.get("label") else ""): inp for inp in inputs_a}
+        map_b = {inp["assetType"] + (f"[{inp['label']}]" if inp.get("label") else ""): inp for inp in inputs_b}
+        all_keys = list(dict.fromkeys(list(map_a.keys()) + list(map_b.keys())))
+
+        for key in all_keys:
+            ia = map_a.get(key)
+            ib = map_b.get(key)
+            if ia and ib:
+                va_str = f"v{ia['version']}"
+                vb_str = f"v{ib['version']}"
+                prov_a = f" ({ia.get('method', '?')}" + (f"/{ia['model']}" if ia.get("model") else "") + ")"
+                prov_b = f" ({ib.get('method', '?')}" + (f"/{ib['model']}" if ib.get("model") else "") + ")"
+                if ia["version"] == ib["version"] and ia.get("assetId") == ib.get("assetId"):
+                    dim = f"{_ANSI_DIM}(same){_ANSI_RESET}" if color else "(same)"
+                    print(f"    {key:<20} {va_str}{prov_a} {dim}")
+                else:
+                    if color:
+                        print(f"    {key:<20} {_ANSI_RED}{va_str}{prov_a}{_ANSI_RESET} -> {_ANSI_GREEN}{vb_str}{prov_b}{_ANSI_RESET}")
+                    else:
+                        print(f"    {key:<20} {va_str}{prov_a} -> {vb_str}{prov_b}")
+            elif ia and not ib:
+                if color:
+                    print(f"    {_ANSI_RED}- {key:<18} v{ia['version']}{_ANSI_RESET}")
+                else:
+                    print(f"    - {key:<18} v{ia['version']}")
+            else:
+                if color:
+                    print(f"    {_ANSI_GREEN}+ {key:<18} v{ib['version']}{_ANSI_RESET}")
+                else:
+                    print(f"    + {key:<18} v{ib['version']}")
+
+
+def _parse_scorecard(raw: str | None) -> dict | None:
+    if not raw:
+        return None
+    try:
+        sc = json.loads(raw)
+        return sc.get("scores", {})
+    except (json.JSONDecodeError, TypeError):
+        return None

@@ -56,6 +56,11 @@ Download:
 Prompts:
   prompt <noteId> <shotLabel> [--version N]
                                           List prompt versions or show full prompt
+  prompt-diff <noteId> <shotLabel> --from N --to M
+                                          Unified diff between two prompt versions
+
+Diff:
+  roll-diff <rollId-A> <rollId-B>        Compare two rolls (prompt, inputs, scores)
 
 Provenance:
   provenance <assetId>                    Query asset provenance
@@ -95,6 +100,8 @@ COMMANDS = {
     "roll-snapshot": filmwork.roll_snapshot,
     "roll-context": filmwork.roll_context,
     "set-provenance": filmwork.set_provenance,
+    "prompt-diff": filmwork.prompt_diff,
+    "roll-diff": filmwork.roll_diff,
     "download": filmwork.download_asset,
     "download-shot": filmwork.download_shot,
 }

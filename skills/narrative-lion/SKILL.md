@@ -63,6 +63,8 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]` | List decisions |
 | `nl.py insights [noteId] [--category C] [--tag T] [--limit N] [--offset N]` | List insights (cross-note if no noteId) |
 | `nl.py prompt <noteId> <shotLabel> [--version N]` | List prompt versions or show full prompt for a version |
+| `nl.py prompt-diff <noteId> <shotLabel> --from N --to M` | Unified diff between two prompt versions |
+| `nl.py roll-diff <rollId-A> <rollId-B>` | Compare two rolls: metadata, prompt, inputs, scores |
 | `nl.py provenance <assetId>` | Query how an asset was made |
 | `nl.py lineage <assetId> [--depth N]` | Query full lineage DAG (shows parent→child direction) |
 | `nl.py roll-snapshot <rollId>` | What asset versions were used to generate a roll |
@@ -381,8 +383,8 @@ Example: `nl.py insight <noteId> --category video --tags "motion-direction,walki
 
 **Stop. Do not re-roll.**
 
-1. `nl.py roll-context <rollId>` for each rejected roll — compare prompts, inputs, and provenance.
-2. Find the common pattern across rolls' issues.
+1. `nl.py roll-diff <worst-rollId> <best-rollId>` — see exactly what changed between attempts (prompt, inputs, scores).
+2. If prompt versions differ: `nl.py prompt-diff <noteId> <label> --from N --to M` — see the exact text changes.
 3. `nl.py decisions <noteId> --shot <shotUUID>` — what's been tried so far?
 4. `nl.py insights <noteId>` — is this pattern documented?
 4. Consider: switch model, rewrite prompt, change reference frames, simplify the shot.
