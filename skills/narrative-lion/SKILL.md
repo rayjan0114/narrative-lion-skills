@@ -1,6 +1,6 @@
 ---
 name: narrative-lion
-description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with notes, produce AI video shot pipelines, and export. Use when the user wants to "create a note from this video", "search my notes", "chat with my notes", "create a filmwork project", or "export my notes".
+description: Interact with Narrative Lion — generate notes from YouTube, search your knowledge base, chat with notes, produce AI video shot pipelines, generate short-form video scripts, and export. Use when the user wants to "create a note from this video", "search my notes", "chat with my notes", "create a filmwork project", "generate a reel/short script", or "export my notes".
 metadata:
   author: rayjan0114
   version: 0.8.0
@@ -96,6 +96,76 @@ Two-level folder tree. `notes list --collection ID` scopes by collection.
 `director` costs 1-2 credits per call.
 
 Threading: omit `--thread` for a new conversation, pass `--thread <id>` to continue.
+
+### Reel Coach
+
+Generates production-ready short-form video scripts (TikTok / Reels / Shorts) from the user's note library. The AI retrieves relevant notes, produces a shot-by-shot script with timing, then annotates the draft with "Coach Notes" citing exact source sentences.
+
+**Generate (1-2 credits):**
+```bash
+curl -N https://narrativelion.com/api/chat/stream \
+  -H "Authorization: Bearer $NLK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: NLSkill/1.0" \
+  -d '{
+    "threadId": "'$(python3 -c 'import uuid; print(uuid.uuid4())')'",
+    "actionId": "'$(python3 -c 'import uuid; print(uuid.uuid4())')'",
+    "event": {
+      "type": "user_text",
+      "payload": {
+        "text": "Generate a reel script",
+        "activeTool": "reel_coach",
+        "reelCoachTopic": "Topic or creative brief",
+        "reelCoachTargetDurationSec": 30,
+        "reelCoachPinnedNoteIds": ["note-id-1"],
+        "reelCoachAutoRetrieve": true
+      }
+    }
+  }'
+```
+
+Payload fields:
+- `reelCoachTopic` (string) — topic / brief, max 2000 chars. Falls back to `text` if omitted.
+- `reelCoachTargetDurationSec` (number) — target duration, max 120, default 30.
+- `reelCoachPinnedNoteIds` (string[]) — note IDs to always include (max 20).
+- `reelCoachAutoRetrieve` (boolean) — auto-retrieve relevant notes, default true.
+
+The SSE stream emits `token` events, then a `complete` event with artifacts:
+- `reelCoachSetup` — resolved setup (pass back to refine/persist).
+- `reelCoachAnnotations` — Coach Notes: `{ draftExcerpt, rationale, confidence, references[] }`.
+- `reelCoachStats` — `{ totalBreakdownCount, usedSourceCount, validatedQuoteCount }`.
+
+The `finalMessage` is a JSON draft:
+```json
+{
+  "shots": [
+    { "title": "Hook", "durationSec": 5, "script": "Spoken text..." },
+    { "title": "Core insight", "durationSec": 10, "script": "..." }
+  ],
+  "coachOverview": "Strategy summary...",
+  "sourceRelevance": [{ "noteTitle": "...", "relevanceScore": 0.9 }]
+}
+```
+
+**Persist as Filmwork project (0 credits):**
+```bash
+curl -X POST https://narrativelion.com/api/filmwork/director/persist \
+  -H "Authorization: Bearer $NLK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: NLSkill/1.0" \
+  -d '{
+    "shots": [{"title":"Hook","durationSec":5,"script":"..."}],
+    "setup": {"topic":"...","targetDurationSec":30,"pinnedNoteIds":[],"autoRetrieve":true},
+    "coachOverview": "..."
+  }'
+```
+Returns `{ noteId, title }`. After persist, manage the project via `nl.py overview` / `nl.py shot`.
+
+**Refine (optional, 1 credit each):**
+- Suggestions: `POST /api/filmwork/coach/refine-suggestions` with `{ draft, setup }` → `{ suggestions: [{ label, prompt }] }`
+- Revise: `POST /api/filmwork/coach/refine` (SSE) with `{ currentDraft, setup, refinementPrompt, pinnedNoteIds? }`
+
+**Full docs:** https://narrativelion.com/docs/reel-coach
 
 ### Podcast
 
@@ -197,16 +267,19 @@ mutation {
 
 | Path | When | Cost |
 |---|---|---|
-| **A: Film Director** | Have concept, need storyboard | 1-2 credits |
-| **B: Direct creation** | Have formatted storyboard | 0 credits |
+| **Film Director** | Have concept, need storyboard | 1-2 credits |
+| **Reel Coach** | Generate short-form script from notes | 1-2 credits |
+| **Direct creation** | Have formatted storyboard | 0 credits |
 
-**Path A:**
+**Film Director:**
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director "concept description" --type animate --duration 30 --aspect 16:9
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director-persist <threadId> --storyboard <md> --instruction "concept" --type animate --duration 30 --aspect 16:9
 ```
 
-**Path B:** `notes create --type filmwork --content <storyboard_md>` then create shots via GraphQL.
+**Reel Coach:** Uses curl (no CLI wrapper). See the Reel Coach section below.
+
+**Direct creation:** `notes create --type filmwork --content <storyboard_md>` then create shots via GraphQL.
 
 Labels must match `**01A** (Ns) — Title`. Invalid → `INVALID_STORYBOARD_FORMAT`.
 
