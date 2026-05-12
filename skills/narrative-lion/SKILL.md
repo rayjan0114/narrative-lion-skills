@@ -97,6 +97,8 @@ Two-level folder tree. `notes list --collection ID` scopes by collection.
 
 Threading: omit `--thread` for a new conversation, pass `--thread <id>` to continue.
 
+**Full docs:** https://narrativelion.com/docs/film-director
+
 ### Reel Coach
 
 Generates production-ready short-form video scripts (TikTok / Reels / Shorts) from the user's note library. The AI retrieves relevant notes, produces a shot-by-shot script with timing, then annotates the draft with "Coach Notes" citing exact source sentences.
