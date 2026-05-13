@@ -15,7 +15,8 @@ Usage: nl.py <command> [args...] [--json]
 General:
   search <query> [--collection ID]        Semantic search
   fts <query> [--collection ID]           Full-text search
-  notes list [--collection ID] [--type T] Browse notes
+  notes list [--collection ID] [--type T] [--sort S] [--limit N] [--tags T1,T2]
+                                          Browse notes (sort: newest|oldest|alpha)
   notes get <noteId>                      Get note details
   notes create --type T --content C       Create note
   notes update <noteId> [--content C]     Update note (--metadata/--file)

@@ -11,6 +11,10 @@ def list_notes(args: list[str], json_mode: bool = False) -> None:
     uncategorized = False
     note_type = None
     starred = None
+    sort = None
+    limit = None
+    offset = None
+    tags = None
 
     i = 0
     while i < len(args):
@@ -22,13 +26,23 @@ def list_notes(args: list[str], json_mode: bool = False) -> None:
             note_type = args[i + 1]; i += 2
         elif args[i] == "--starred":
             starred = True; i += 1
+        elif args[i] == "--sort" and i + 1 < len(args):
+            sort = args[i + 1]; i += 2
+        elif args[i] == "--limit" and i + 1 < len(args):
+            limit = int(args[i + 1]); i += 2
+        elif args[i] == "--offset" and i + 1 < len(args):
+            offset = int(args[i + 1]); i += 2
+        elif args[i] == "--tags" and i + 1 < len(args):
+            tags = [t.strip() for t in args[i + 1].split(",")]; i += 2
         else:
             i += 1
 
     gql = """
-    query($noteType: String, $starred: Boolean, $collectionId: String, $uncategorized: Boolean) {
-      browseNotes(noteType: $noteType, starred: $starred, collectionId: $collectionId, uncategorized: $uncategorized) {
-        id noteMd starredAt tags
+    query($noteType: String, $starred: Boolean, $collectionId: String,
+          $uncategorized: Boolean, $sort: String, $limit: Int, $offset: Int, $tags: [String!]) {
+      browseNotes(noteType: $noteType, starred: $starred, collectionId: $collectionId,
+                  uncategorized: $uncategorized, sort: $sort, limit: $limit, offset: $offset, tags: $tags) {
+        id title noteType createdAt updatedAt starredAt tags
       }
     }"""
     variables: dict = {}
@@ -40,6 +54,14 @@ def list_notes(args: list[str], json_mode: bool = False) -> None:
         variables["noteType"] = note_type
     if starred:
         variables["starred"] = True
+    if sort:
+        variables["sort"] = sort
+    if limit is not None:
+        variables["limit"] = limit
+    if offset is not None:
+        variables["offset"] = offset
+    if tags:
+        variables["tags"] = tags
 
     data = graphql(gql, variables)
     notes = data.get("browseNotes", [])
@@ -53,11 +75,12 @@ def list_notes(args: list[str], json_mode: bool = False) -> None:
         return
 
     for n in notes:
-        md = n.get("noteMd") or ""
-        first_line = md.split("\n")[0][:60] if md else "(empty)"
         note_id = n.get("id", "")
+        title = n.get("title") or "(untitled)"
+        ntype = n.get("noteType") or ""
+        date = (n.get("updatedAt") or "")[:10]
         star = "*" if n.get("starredAt") else " "
-        print(f"  {star} {note_id}  {first_line}")
+        print(f"  {star} {date}  {ntype:<9}  {note_id}  {title[:60]}")
 
 
 def get_note(args: list[str], json_mode: bool = False) -> None:

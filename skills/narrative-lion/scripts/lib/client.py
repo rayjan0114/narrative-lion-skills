@@ -81,16 +81,16 @@ def graphql(query: str, variables: dict | None = None) -> dict:
 
 
 def print_hints(hints: list[dict]) -> None:
-    """Print agent hints from extensions.agentHints."""
+    """Print agent hints to stderr so they don't pollute stdout/JSON."""
     if not hints:
         return
-    print()
+    print(file=sys.stderr)
     marks = {"high": "!", "medium": "*", "low": "~"}
     for h in hints:
         mark = marks.get(h.get("priority", "low"), "~")
-        print(f"  [{mark}] {h.get('message', '')}")
+        print(f"  [{mark}] {h.get('message', '')}", file=sys.stderr)
         if h.get("action"):
-            print(f"      {h['action']}")
+            print(f"      {h['action']}", file=sys.stderr)
 
 
 def rest_get(path: str) -> dict:
