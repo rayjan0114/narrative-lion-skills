@@ -39,6 +39,8 @@ def overview(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id})
     ov = data.get("filmworkOverview")
     if not ov:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": f"Filmwork not found: {note_id}"})); return
         print(f"Filmwork not found: {note_id}", file=sys.stderr); return
 
     if json_mode:
@@ -95,6 +97,8 @@ def shot(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": f"Shot {label} not found in {note_id}"})); return
         print(f"Shot {label} not found in {note_id}", file=sys.stderr); return
 
     if json_mode:
@@ -175,6 +179,8 @@ def preflight(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": f"Shot {label} not found"})); return
         print(f"Shot {label} not found", file=sys.stderr); return
 
     if json_mode:
@@ -743,11 +749,13 @@ def provenance(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"assetId": asset_id})
     prov = data.get("assetProvenance")
 
+    if not prov:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": "No provenance recorded for this asset"})); return
+        print("  No provenance recorded for this asset."); return
+
     if json_mode:
         print(as_json(prov)); return
-
-    if not prov:
-        print("  No provenance recorded for this asset."); return
 
     print(f"  Asset:   {prov['assetId']}")
     print(f"  Method:  {prov['method']}")
@@ -856,6 +864,8 @@ def prompt_view(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": shot_label})
     s = data.get("filmworkShotByLabel")
     if not s:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": f"Shot {shot_label} not found in {note_id}"})); return
         print(f"Shot {shot_label} not found in {note_id}", file=sys.stderr); return
 
     prompts_raw = s.get("promptsJson")
@@ -918,11 +928,13 @@ def roll_context(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"rollId": roll_id})
     rc = data.get("rollContext")
 
+    if not rc:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": "Roll not found"})); return
+        print("  Roll not found."); return
+
     if json_mode:
         print(as_json(rc)); return
-
-    if not rc:
-        print("  Roll not found."); return
 
     golden = " [GOLDEN]" if rc.get("isGolden") else ""
     print(f"Roll #{rc['rollNumber']} -- {rc['shotLabel']} (shot: {rc['shotId'][:12]}..){golden}")
@@ -1108,6 +1120,10 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
                 sys.stdout = _saved
         else:
             shot_update(update_args, json_mode=False)
+        if status and status != "not_started":
+            created["status"] = status
+        if duration is not None:
+            created["targetDurationSec"] = duration
 
     if json_mode:
         print(as_json(created))
@@ -1182,6 +1198,8 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
+        if json_mode:
+            print(as_json({"error": "NOT_FOUND", "message": f"Shot {label} not found in {note_id}"})); return
         print(f"Shot {label} not found in {note_id}", file=sys.stderr); return
 
     assets = s.get("assets", [])
@@ -1191,7 +1209,7 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     if not assets:
         qualifier = "golden " if golden_only else ""
         if json_mode:
-            print(as_json([])); return
+            print(as_json({"downloaded": [], "held": []})); return
         print(f"  No {qualifier}assets found for {label}.")
         if golden_only:
             print("  Use --all to download all versions.")
@@ -1205,9 +1223,11 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     needs_version = {k for k, v in type_label_counts.items() if v > 1}
 
     results = []
+    held = []
     for a in assets:
         if a.get("agentHold"):
             print(f"  [HOLD] Skipping {a['assetType']} {a.get('label', '')} (agent hold)", file=sys.stderr)
+            held.append({"assetId": a["id"], "type": a["assetType"], "reason": "agent_hold"})
             continue
 
         force_version = (a["assetType"], a.get("label")) in needs_version
@@ -1226,7 +1246,7 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     print(f"\n  {len(results)} file(s) saved to {output_dir}", file=sys.stderr)
 
     if json_mode:
-        print(as_json(results)); return
+        print(as_json({"downloaded": results, "held": held})); return
 
 
 # ---------------------------------------------------------------------------
