@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from lib.client import graphql
 from lib.formatters import as_json, table
 
@@ -9,7 +11,7 @@ from lib.formatters import as_json, table
 def search(args: list[str], json_mode: bool = False) -> None:
     query_text = args[0] if args else ""
     if not query_text:
-        print("Usage: nl.py search <query> [--collection ID]")
+        print("Usage: nl.py search <query> [--collection ID]", file=sys.stderr)
         return
 
     collection_id = None
@@ -48,7 +50,7 @@ def search(args: list[str], json_mode: bool = False) -> None:
 def fts(args: list[str], json_mode: bool = False) -> None:
     query_text = args[0] if args else ""
     if not query_text:
-        print("Usage: nl.py fts <query> [--collection ID]")
+        print("Usage: nl.py fts <query> [--collection ID]", file=sys.stderr)
         return
 
     collection_id = None

@@ -19,7 +19,7 @@ from lib.formatters import as_json, status_bar
 
 def overview(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py overview <noteId>"); return
+        print("Usage: nl.py overview <noteId>", file=sys.stderr); return
     note_id = args[0]
 
     gql = """
@@ -39,7 +39,7 @@ def overview(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id})
     ov = data.get("filmworkOverview")
     if not ov:
-        print(f"Filmwork not found: {note_id}"); return
+        print(f"Filmwork not found: {note_id}", file=sys.stderr); return
 
     if json_mode:
         print(as_json(ov)); return
@@ -76,7 +76,7 @@ def overview(args: list[str], json_mode: bool = False) -> None:
 
 def shot(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py shot <noteId> <label>"); return
+        print("Usage: nl.py shot <noteId> <label>", file=sys.stderr); return
     note_id, label = args[0], args[1]
 
     gql = """
@@ -95,7 +95,7 @@ def shot(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
-        print(f"Shot {label} not found in {note_id}"); return
+        print(f"Shot {label} not found in {note_id}", file=sys.stderr); return
 
     if json_mode:
         print(as_json(s)); return
@@ -162,7 +162,7 @@ def shot(args: list[str], json_mode: bool = False) -> None:
 
 def preflight(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py preflight <noteId> <label>"); return
+        print("Usage: nl.py preflight <noteId> <label>", file=sys.stderr); return
     note_id, label = args[0], args[1]
 
     gql = """
@@ -175,7 +175,7 @@ def preflight(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
-        print(f"Shot {label} not found"); return
+        print(f"Shot {label} not found", file=sys.stderr); return
 
     if json_mode:
         print(as_json(s.get("preflightStatus"))); return
@@ -195,7 +195,7 @@ def preflight(args: list[str], json_mode: bool = False) -> None:
 
 def upload_asset(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 3:
-        print("Usage: nl.py upload <shotId> <assetType> <file> [--label L]"); return
+        print("Usage: nl.py upload <shotId> <assetType> <file> [--label L]", file=sys.stderr); return
 
     shot_id = args[0]
     asset_type = args[1]
@@ -228,7 +228,7 @@ def upload_asset(args: list[str], json_mode: bool = False) -> None:
         print("Error: Failed to get upload URL", file=sys.stderr); return
 
     # Step 2: PUT binary
-    print(f"  Uploading {filename}...")
+    print(f"  Uploading {filename}...", file=sys.stderr)
     upload_binary(upload_url, file_path, content_type)
 
     # Parse optional provenance flags
@@ -285,7 +285,7 @@ def upload_asset(args: list[str], json_mode: bool = False) -> None:
 
 def upload_roll(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py upload-roll <shotId> <file> --seed N --model M --prompt-version N"); return
+        print("Usage: nl.py upload-roll <shotId> <file> --seed N --model M --prompt-version N", file=sys.stderr); return
 
     shot_id = args[0]
     file_path = args[1]
@@ -321,7 +321,7 @@ def upload_roll(args: list[str], json_mode: bool = False) -> None:
     roll_key = info.get("rollKey", "")
 
     # Step 2: PUT binary
-    print(f"  Uploading {filename}...")
+    print(f"  Uploading {filename}...", file=sys.stderr)
     upload_binary(upload_url, file_path, content_type)
 
     # Step 3: Confirm
@@ -351,7 +351,7 @@ def upload_roll(args: list[str], json_mode: bool = False) -> None:
 
 def score(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py score <rollId> --face N --expr N --motion N --stability N --style N"); return
+        print("Usage: nl.py score <rollId> --face N --expr N --motion N --stability N --style N", file=sys.stderr); return
 
     roll_id = args[0]
     scores: dict[str, int] = {}
@@ -400,7 +400,7 @@ def score(args: list[str], json_mode: bool = False) -> None:
 
 def verdict(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py verdict <rollId> <approved|rejected>"); return
+        print("Usage: nl.py verdict <rollId> <approved|rejected>", file=sys.stderr); return
 
     roll_id = args[0]
     v = args[1]
@@ -421,7 +421,7 @@ def verdict(args: list[str], json_mode: bool = False) -> None:
 
 def golden_roll(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py golden-roll <rollId>"); return
+        print("Usage: nl.py golden-roll <rollId>", file=sys.stderr); return
 
     gql = """
     mutation($rollId: String!) {
@@ -437,7 +437,7 @@ def golden_roll(args: list[str], json_mode: bool = False) -> None:
 
 def shot_update(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py shot-update <shotId> [--status S] [--blocker JSON] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--relations JSON] [--duration N]"); return
+        print("Usage: nl.py shot-update <shotId> [--status S] [--blocker JSON] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--relations JSON] [--duration N]", file=sys.stderr); return
 
     shot_id = args[0]
     status = None; blocker = None
@@ -467,6 +467,9 @@ def shot_update(args: list[str], json_mode: bool = False) -> None:
 
     has_shot_fields = any(v is not None for v in [prompts, dialogue, direction, model_config, relations, duration])
 
+    status_result = None
+    fields_result = None
+
     if status:
         gql = """
         mutation($shotId: String!, $status: String!, $blockerJson: String) {
@@ -478,11 +481,9 @@ def shot_update(args: list[str], json_mode: bool = False) -> None:
         if blocker:
             variables["blockerJson"] = blocker
         data = graphql(gql, variables)
-        result = data.get("updateShotStatus", {})
-
-        if json_mode and not has_shot_fields:
-            print(as_json(result)); return
-        print(f"  Shot {result.get('shotId')}: {result.get('status')}")
+        status_result = data.get("updateShotStatus", {})
+        if not json_mode:
+            print(f"  Shot {status_result.get('shotId')}: {status_result.get('status')}")
 
     if has_shot_fields:
         gql = """
@@ -505,13 +506,20 @@ def shot_update(args: list[str], json_mode: bool = False) -> None:
         if duration is not None:
             variables["targetDurationSec"] = duration
         data = graphql(gql, variables)
-        result = data.get("updateFilmworkShot", {})
+        fields_result = data.get("updateFilmworkShot", {})
 
-        if json_mode:
-            print(as_json(result)); return
+        if not json_mode:
+            updated = [k for k in ["prompts", "dialogue", "direction", "model-config", "relations", "duration"] if locals().get(k.replace("-", "_")) is not None]
+            print(f"  Shot {fields_result.get('shotId')}: updated {', '.join(updated)}")
 
-        updated = [k for k in ["prompts", "dialogue", "direction", "model-config", "relations", "duration"] if locals().get(k.replace("-", "_")) is not None]
-        print(f"  Shot {result.get('shotId')}: updated {', '.join(updated)}")
+    if json_mode:
+        if status_result and fields_result:
+            print(as_json({"status": status_result, "fields": fields_result}))
+        elif status_result:
+            print(as_json(status_result))
+        elif fields_result:
+            print(as_json(fields_result))
+        return
 
     if not status and not has_shot_fields:
         print("Error: Provide at least one flag (--status, --prompts, --dialogue, --direction, --model-config, --relations, --duration)", file=sys.stderr)
@@ -540,7 +548,7 @@ def add_decision(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not all([note_id, action, reason, outcome]):
-        print("Usage: nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O"); return
+        print("Usage: nl.py decision <noteId> [--shot ID] --action A --reason R --outcome O", file=sys.stderr); return
 
     gql = """
     mutation($noteId: String!, $shotId: String, $actor: String!, $action: String!, $reason: String!, $outcome: String!) {
@@ -584,7 +592,7 @@ def add_insight(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not all([note_id, category, tags, title, detail]):
-        print("Usage: nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]"); return
+        print("Usage: nl.py insight <noteId> --category C --tags T1,T2 --title T --detail D [--source-shots JSON]", file=sys.stderr); return
 
     import json as _json
     tags_list = [t.strip() for t in tags.split(",")]
@@ -610,7 +618,7 @@ def add_insight(args: list[str], json_mode: bool = False) -> None:
 
 def list_decisions(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]"); return
+        print("Usage: nl.py decisions <noteId> [--shot ID] [--limit N] [--offset N]", file=sys.stderr); return
 
     note_id = args[0]
     shot_id = None; limit = None; offset = None
@@ -722,7 +730,7 @@ def list_insights(args: list[str], json_mode: bool = False) -> None:
 
 def provenance(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py provenance <assetId>"); return
+        print("Usage: nl.py provenance <assetId>", file=sys.stderr); return
 
     asset_id = args[0]
     gql = """
@@ -764,7 +772,7 @@ def provenance(args: list[str], json_mode: bool = False) -> None:
 
 def lineage(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py lineage <assetId> [--depth N]"); return
+        print("Usage: nl.py lineage <assetId> [--depth N]", file=sys.stderr); return
 
     asset_id = args[0]
     max_depth = 5
@@ -800,7 +808,7 @@ def lineage(args: list[str], json_mode: bool = False) -> None:
 
 def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py roll-snapshot <rollId>"); return
+        print("Usage: nl.py roll-snapshot <rollId>", file=sys.stderr); return
 
     roll_id = args[0]
     gql = """
@@ -826,7 +834,7 @@ def roll_snapshot(args: list[str], json_mode: bool = False) -> None:
 
 def prompt_view(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py prompt <noteId> <shotLabel> [--version N]"); return
+        print("Usage: nl.py prompt <noteId> <shotLabel> [--version N]", file=sys.stderr); return
 
     note_id = args[0]
     shot_label = args[1]
@@ -837,7 +845,7 @@ def prompt_view(args: list[str], json_mode: bool = False) -> None:
             try:
                 version = int(args[idx + 1])
             except ValueError:
-                print("Error: --version must be an integer"); return
+                print("Error: --version must be an integer", file=sys.stderr); return
 
     gql = """
     query($noteId: String!, $shotLabel: String!) {
@@ -848,15 +856,19 @@ def prompt_view(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": shot_label})
     s = data.get("filmworkShotByLabel")
     if not s:
-        print(f"Shot {shot_label} not found in {note_id}"); return
+        print(f"Shot {shot_label} not found in {note_id}", file=sys.stderr); return
 
     prompts_raw = s.get("promptsJson")
     if not prompts_raw:
+        if json_mode:
+            print(as_json([])); return
         print("  No prompts defined for this shot."); return
 
     try:
         prompts = json.loads(prompts_raw)
     except (json.JSONDecodeError, TypeError):
+        if json_mode:
+            print(as_json({"error": "promptsJson is not valid JSON"})); return
         print("  Error: promptsJson is not valid JSON."); return
 
     if json_mode:
@@ -891,7 +903,7 @@ def prompt_view(args: list[str], json_mode: bool = False) -> None:
 
 def roll_context(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py roll-context <rollId>"); return
+        print("Usage: nl.py roll-context <rollId>", file=sys.stderr); return
 
     roll_id = args[0]
     gql = """
@@ -969,7 +981,7 @@ def set_provenance(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not asset_id or not method:
-        print("Usage: nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--user-note N] [--parent JSON ...]"); return
+        print("Usage: nl.py set-provenance <assetId> --method M [--model M] [--prompt P] [--user-note N] [--parent JSON ...]", file=sys.stderr); return
 
     gql = """
     mutation($assetId: String!, $method: String!, $model: String, $prompt: String, $modelParamsJson: String, $userNote: String, $parents: [ProvenanceInputArg!]) {
@@ -1007,7 +1019,7 @@ def set_provenance(args: list[str], json_mode: bool = False) -> None:
 
 def shot_create(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py shot-create <noteId> [--label L] [--after LABEL] [--duration N] [--status S]"); return
+        print("Usage: nl.py shot-create <noteId> [--label L] [--after LABEL] [--duration N] [--status S]", file=sys.stderr); return
 
     note_id = args[0]
     label = None; duration = None; status = None; after = None
@@ -1041,10 +1053,8 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
         shot_uuid = created.get("id")
         if not shot_uuid:
             print("Error: Shot creation failed — no id returned", file=sys.stderr); return
-        computed_label = created.get("shotId", "?")
-        print(f"  Created shot {computed_label} (id: {shot_uuid}, after: {after})")
-        if json_mode:
-            print(as_json(created))
+        if not json_mode:
+            print(f"  Created shot {created.get('shotId', '?')} (id: {shot_uuid}, after: {after})")
     else:
         # Manual mode: --label provided, sequenceOrder from --after or default
         sequence_order = 999
@@ -1078,9 +1088,8 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
         shot_uuid = created.get("id")
         if not shot_uuid:
             print("Error: Shot creation failed — no id returned", file=sys.stderr); return
-        print(f"  Created shot {label} (id: {shot_uuid})")
-        if json_mode:
-            print(as_json(created))
+        if not json_mode:
+            print(f"  Created shot {label} (id: {shot_uuid})")
 
     # Apply optional status / duration via shot_update
     update_args = [shot_uuid]
@@ -1090,11 +1099,18 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
         update_args += ["--duration", str(duration)]
 
     if len(update_args) > 1:
-        shot_update(update_args, json_mode=False)
+        if json_mode:
+            _saved = sys.stdout
+            sys.stdout = sys.stderr
+            try:
+                shot_update(update_args, json_mode=False)
+            finally:
+                sys.stdout = _saved
+        else:
+            shot_update(update_args, json_mode=False)
 
     if json_mode:
-        print(as_json({"id": shot_uuid, "shotId": label, "sequenceOrder": sequence_order,
-                       "status": status or "not_started", "targetDurationSec": duration}))
+        print(as_json(created))
 
 
 # ---------------------------------------------------------------------------
@@ -1129,24 +1145,24 @@ def _asset_filename(shot_label: str, asset_type: str, label: str | None, version
 
 def download_asset(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py download <assetId> <output_path>"); return
+        print("Usage: nl.py download <assetId> <output_path>", file=sys.stderr); return
 
     asset_id = args[0]
     output_path = args[1]
     url = f"{BASE_URL}/api/filmwork/assets/{asset_id}/content"
 
-    print(f"  Downloading {asset_id}...")
+    print(f"  Downloading {asset_id}...", file=sys.stderr)
     download_binary(url, output_path)
     size = os.path.getsize(output_path)
-    print(f"  Saved: {output_path} ({size:,} bytes)")
+    print(f"  Saved: {output_path} ({size:,} bytes)", file=sys.stderr)
 
     if json_mode:
-        print(as_json({"assetId": asset_id, "path": output_path, "size": size}))
+        print(as_json({"assetId": asset_id, "path": output_path, "size": size})); return
 
 
 def download_shot(args: list[str], json_mode: bool = False) -> None:
     if len(args) < 2:
-        print("Usage: nl.py download-shot <noteId> <label> [--dir D] [--all]"); return
+        print("Usage: nl.py download-shot <noteId> <label> [--dir D] [--all]", file=sys.stderr); return
 
     note_id, label = args[0], args[1]
     golden_only = "--all" not in args
@@ -1166,7 +1182,7 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     data = graphql(gql, {"noteId": note_id, "shotLabel": label})
     s = data.get("filmworkShotByLabel")
     if not s:
-        print(f"Shot {label} not found in {note_id}"); return
+        print(f"Shot {label} not found in {note_id}", file=sys.stderr); return
 
     assets = s.get("assets", [])
     if golden_only:
@@ -1174,6 +1190,8 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
 
     if not assets:
         qualifier = "golden " if golden_only else ""
+        if json_mode:
+            print(as_json([])); return
         print(f"  No {qualifier}assets found for {label}.")
         if golden_only:
             print("  Use --all to download all versions.")
@@ -1189,7 +1207,7 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
     results = []
     for a in assets:
         if a.get("agentHold"):
-            print(f"  [HOLD] Skipping {a['assetType']} {a.get('label', '')} (agent hold)")
+            print(f"  [HOLD] Skipping {a['assetType']} {a.get('label', '')} (agent hold)", file=sys.stderr)
             continue
 
         force_version = (a["assetType"], a.get("label")) in needs_version
@@ -1200,15 +1218,15 @@ def download_shot(args: list[str], json_mode: bool = False) -> None:
         dest = os.path.join(output_dir, filename)
         url = f"{BASE_URL}/api/filmwork/assets/{a['id']}/content"
 
-        print(f"  Downloading {a['assetType']}{' [' + a['label'] + ']' if a.get('label') else ''} → {filename}")
+        print(f"  Downloading {a['assetType']}{' [' + a['label'] + ']' if a.get('label') else ''} → {filename}", file=sys.stderr)
         download_binary(url, dest)
         size = os.path.getsize(dest)
         results.append({"assetId": a["id"], "type": a["assetType"], "file": filename, "size": size})
 
-    print(f"\n  {len(results)} file(s) saved to {output_dir}")
+    print(f"\n  {len(results)} file(s) saved to {output_dir}", file=sys.stderr)
 
     if json_mode:
-        print(as_json(results))
+        print(as_json(results)); return
 
 
 # ---------------------------------------------------------------------------
@@ -1282,7 +1300,7 @@ def _fetch_prompts(note_id: str, shot_label: str) -> list[dict] | None:
 def prompt_diff(args: list[str], json_mode: bool = False) -> None:
     """Compare two prompt versions side by side with unified diff."""
     if len(args) < 2:
-        print("Usage: nl.py prompt-diff <noteId> <shotLabel> --from N --to M"); return
+        print("Usage: nl.py prompt-diff <noteId> <shotLabel> --from N --to M", file=sys.stderr); return
 
     note_id = args[0]
     shot_label = args[1]
@@ -1376,7 +1394,7 @@ def _fetch_roll_context(roll_id: str) -> dict | None:
 def roll_diff(args: list[str], json_mode: bool = False) -> None:
     """Compare two rolls: metadata, prompt, and input assets."""
     if len(args) < 2:
-        print("Usage: nl.py roll-diff <rollId-A> <rollId-B>"); return
+        print("Usage: nl.py roll-diff <rollId-A> <rollId-B>", file=sys.stderr); return
 
     roll_a_id = args[0]
     roll_b_id = args[1]

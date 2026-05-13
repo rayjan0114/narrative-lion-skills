@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+
 from lib.client import rest_post
 from lib.formatters import as_json
 
 
 def export_notes(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py export <noteId> [noteId2 ...]")
+        print("Usage: nl.py export <noteId> [noteId2 ...]", file=sys.stderr)
         return
 
     note_ids = [a for a in args if not a.startswith("--")]

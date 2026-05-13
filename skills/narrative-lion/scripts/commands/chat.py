@@ -102,7 +102,7 @@ def director(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not text:
-        print("Usage: nl.py director <concept> [--type animate|short|cinematic] [--duration N] [--aspect 16:9] [--style S] [--thread ID]"); return
+        print("Usage: nl.py director <concept> [--type animate|short|cinematic] [--duration N] [--aspect 16:9] [--style S] [--thread ID]", file=sys.stderr); return
 
     thread_id = thread_id or new_uuid()
 
@@ -161,7 +161,7 @@ def director_persist(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not positionals:
-        print("Usage: nl.py director-persist <threadId> --storyboard <md> --instruction <text> [--type T] [--duration N] [--aspect R] [--immediate]"); return
+        print("Usage: nl.py director-persist <threadId> --storyboard <md> --instruction <text> [--type T] [--duration N] [--aspect R] [--immediate]", file=sys.stderr); return
 
     thread_id = positionals[0]
 

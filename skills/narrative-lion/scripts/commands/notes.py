@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from lib.client import graphql
 from lib.formatters import as_json, table
 
@@ -85,7 +87,7 @@ def list_notes(args: list[str], json_mode: bool = False) -> None:
 
 def get_note(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py notes get <noteId>")
+        print("Usage: nl.py notes get <noteId>", file=sys.stderr)
         return
 
     note_id = args[0]
@@ -105,7 +107,7 @@ def get_note(args: list[str], json_mode: bool = False) -> None:
         return
 
     if not note:
-        print(f"Note {note_id} not found.")
+        print(f"Note {note_id} not found.", file=sys.stderr)
         return
 
     title = note.get("title") or "(untitled)"
@@ -144,7 +146,7 @@ def create_note(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if not content:
-        print("Usage: nl.py notes create --type <type> --content <text> [--file path] [--skip-ai]")
+        print("Usage: nl.py notes create --type <type> --content <text> [--file path] [--skip-ai]", file=sys.stderr)
         return
 
     gql = """
@@ -170,7 +172,7 @@ def create_note(args: list[str], json_mode: bool = False) -> None:
 
 def update_note(args: list[str], json_mode: bool = False) -> None:
     if not args:
-        print("Usage: nl.py notes update <noteId> [--content <text>] [--metadata <json>] [--file <path>]")
+        print("Usage: nl.py notes update <noteId> [--content <text>] [--metadata <json>] [--file <path>]", file=sys.stderr)
         return
 
     note_id = args[0]
@@ -195,7 +197,7 @@ def update_note(args: list[str], json_mode: bool = False) -> None:
             i += 1
 
     if content is None and metadata is None:
-        print("Provide --content, --metadata, or --file")
+        print("Provide --content, --metadata, or --file", file=sys.stderr)
         return
 
     gql = """

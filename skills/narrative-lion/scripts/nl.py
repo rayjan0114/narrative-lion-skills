@@ -133,15 +133,15 @@ def main() -> None:
         sub_rest = rest[1:] if rest else []
         handler = NOTES_SUBCOMMANDS.get(subcmd)
         if not handler:
-            print(f"Unknown notes subcommand: {subcmd}")
-            print(f"Available: {', '.join(NOTES_SUBCOMMANDS.keys())}")
+            print(f"Unknown notes subcommand: {subcmd}", file=sys.stderr)
+            print(f"Available: {', '.join(NOTES_SUBCOMMANDS.keys())}", file=sys.stderr)
             return
         handler(sub_rest, json_mode=json_mode)
     elif cmd in COMMANDS:
         COMMANDS[cmd](rest, json_mode=json_mode)
     else:
-        print(f"Unknown command: {cmd}")
-        print(f"Run 'nl.py --help' for usage.")
+        print(f"Unknown command: {cmd}", file=sys.stderr)
+        print(f"Run 'nl.py --help' for usage.", file=sys.stderr)
 
 
 if __name__ == "__main__":
