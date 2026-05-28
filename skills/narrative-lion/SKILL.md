@@ -51,6 +51,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 |---|---|
 | `nl.py overview <noteId>` | Project overview: status counts + all shots |
 | `nl.py shot <noteId> <label>` | Shot detail: preflight, assets, rolls, prompt |
+| `nl.py shot-create <noteId> --label L [--duration N] [--after LABEL] [--status S]` | Create a shot in an existing filmwork (0 credits) |
 | `nl.py preflight <noteId> <label>` | Preflight check only |
 | `nl.py upload <shotId> <assetType> <file> [--label L] [--method M --model M --prompt P --user-note N --parent JSON]` | Upload asset (handles 3-step flow, optional provenance) |
 | `nl.py upload-roll <shotId> <file> [--seed N --model M --prompt-version N]` | Upload roll video |
@@ -269,19 +270,32 @@ mutation {
 
 | Path | When | Cost |
 |---|---|---|
-| **Film Director** | Have concept, need storyboard | 1-2 credits |
+| **Direct creation** (recommended) | Agent manages shots directly | 0 credits |
+| **Film Director** | Have concept, need AI-generated storyboard | 1-2 credits |
 | **Reel Coach** | Generate short-form script from notes | 1-2 credits |
-| **Direct creation** | Have formatted storyboard | 0 credits |
 
-**Film Director:**
+**Direct creation (0 credits):**
+```bash
+# 1. Create empty filmwork note
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py notes create --type filmwork --skip-ai --content '# Project Title'
+
+# 2. Add shots one by one
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --label 01A --duration 3
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --label 01B --duration 5
+# Use --after to insert between existing shots:
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --after 01A --duration 2
+
+# 3. Set direction, prompts, etc. via shot-update
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-update <shotUUID> --direction '{"scene":"..."}' --duration 3
+```
+
+**Film Director (1-2 credits):**
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director "concept description" --type animate --duration 30 --aspect 16:9
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director-persist <threadId> --storyboard <md> --instruction "concept" --type animate --duration 30 --aspect 16:9
 ```
 
-**Reel Coach:** Uses curl (no CLI wrapper). See the Reel Coach section below.
-
-**Direct creation:** `notes create --type filmwork --content <storyboard_md>` then create shots via GraphQL.
+**Reel Coach (1-2 credits):** Uses curl (no CLI wrapper). See the Reel Coach section above.
 
 Labels must match `**01A** (Ns) — Title`. Invalid → `INVALID_STORYBOARD_FORMAT`.
 
