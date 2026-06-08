@@ -52,6 +52,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py overview <noteId>` | Project overview: status counts + all shots |
 | `nl.py shot <noteId> <label>` | Shot detail: preflight, assets, rolls, prompt |
 | `nl.py shot-create <noteId> --label L [--duration N] [--after LABEL] [--status S]` | Create a shot in an existing filmwork (0 credits) |
+| `nl.py shot-delete <shotId>` | Delete a shot (soft-delete, auto-logs decision) |
 | `nl.py preflight <noteId> <label>` | Preflight check only |
 | `nl.py upload <shotId> <assetType> <file> [--label L] [--method M --model M --prompt P --user-note N --parent JSON]` | Upload asset (handles 3-step flow, optional provenance) |
 | `nl.py upload-roll <shotId> <file> [--seed N --model M --prompt-version N]` | Upload roll video |

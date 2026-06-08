@@ -1029,6 +1029,28 @@ def set_provenance(args: list[str], json_mode: bool = False) -> None:
             print(f"    [{p['role']}] {ref}")
 
 
+def shot_delete(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py shot-delete <shotId>", file=sys.stderr); return
+
+    shot_id = args[0]
+
+    gql = """
+    mutation($shotId: String!) {
+      deleteFilmworkShot(shotId: $shotId)
+    }"""
+    data = graphql(gql, {"shotId": shot_id})
+    result = data.get("deleteFilmworkShot")
+
+    if json_mode:
+        print(as_json({"shotId": shot_id, "deleted": result})); return
+
+    if result:
+        print(f"  Deleted shot {shot_id}")
+    else:
+        print(f"  Failed to delete shot {shot_id}", file=sys.stderr)
+
+
 def shot_create(args: list[str], json_mode: bool = False) -> None:
     if not args:
         print("Usage: nl.py shot-create <noteId> [--label L] [--after LABEL] [--duration N] [--status S]", file=sys.stderr); return

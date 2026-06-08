@@ -37,6 +37,7 @@ Filmwork:
   upload-roll <shotId> <file> [--seed N --model M --prompt-version N]
   shot-create <noteId> --after LABEL [--label L] [--duration N] [--status S]
                                           Create shot after LABEL (auto-labels if --label omitted)
+  shot-delete <shotId>                    Delete a shot (soft-delete)
   shot-update <shotId> [--status S] [--prompts JSON] [--dialogue JSON] [--direction JSON] [--model-config JSON] [--duration N]
                                           Update shot status / fields
   score <rollId> --face N --expr N --motion N --stability N --style N
@@ -87,6 +88,7 @@ COMMANDS = {
     "upload": filmwork.upload_asset,
     "upload-roll": filmwork.upload_roll,
     "shot-create": filmwork.shot_create,
+    "shot-delete": filmwork.shot_delete,
     "shot-update": filmwork.shot_update,
     "score": filmwork.score,
     "verdict": filmwork.verdict,
