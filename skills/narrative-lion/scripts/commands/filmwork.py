@@ -1090,40 +1090,25 @@ def shot_create(args: list[str], json_mode: bool = False) -> None:
         if not json_mode:
             print(f"  Created shot {created.get('shotId', '?')} (id: {shot_uuid}, after: {after})")
     else:
-        # Manual mode: --label provided, sequenceOrder from --after or default
-        sequence_order = 999
+        # Manual mode: --label provided, backend computes sequenceOrder
+        variables: dict = {"noteId": note_id, "shotId": label}
         if after is not None:
-            gql_ov = """
-            query($noteId: String!) {
-              filmworkOverview(noteId: $noteId) {
-                shots { shotId }
-              }
-            }"""
-            ov_data = graphql(gql_ov, {"noteId": note_id})
-            ov = ov_data.get("filmworkOverview")
-            if not ov:
-                print(f"Filmwork not found: {note_id}", file=sys.stderr); return
-            shots = ov.get("shots", [])
-            shot_labels = [s.get("shotId", "") for s in shots]
-            if after in shot_labels:
-                after_idx = shot_labels.index(after)
-                sequence_order = after_idx + 1
-            else:
-                print(f"Warning: --after label '{after}' not found; appending at end.", file=sys.stderr)
+            variables["afterLabel"] = after
 
         gql = """
-        mutation($noteId: String!, $shotId: String!, $sequenceOrder: Int!) {
-          createFilmworkShot(noteId: $noteId, shotId: $shotId, sequenceOrder: $sequenceOrder) {
-            id status
+        mutation($noteId: String!, $shotId: String!, $afterLabel: String) {
+          createFilmworkShot(noteId: $noteId, shotId: $shotId, afterLabel: $afterLabel) {
+            id shotId sequenceOrder status
           }
         }"""
-        data = graphql(gql, {"noteId": note_id, "shotId": label, "sequenceOrder": sequence_order})
+        data = graphql(gql, variables)
         created = data.get("createFilmworkShot", {})
         shot_uuid = created.get("id")
         if not shot_uuid:
             print("Error: Shot creation failed — no id returned", file=sys.stderr); return
         if not json_mode:
-            print(f"  Created shot {label} (id: {shot_uuid})")
+            order = created.get("sequenceOrder", "?")
+            print(f"  Created shot {label} (id: {shot_uuid}, order: {order})")
 
     # Apply optional status / duration via shot_update
     update_args = [shot_uuid]
