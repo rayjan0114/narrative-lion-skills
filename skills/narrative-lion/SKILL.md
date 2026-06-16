@@ -283,11 +283,11 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py notes create --type filmwork --skip-
 # 2. Add shots one by one
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --label 01A --duration 3
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --label 01B --duration 5
-# Use --after to insert between existing shots:
+# --after is required once the note has any shot (first shot omits it):
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-create <noteId> --after 01A --duration 2
 
 # 3. Set direction, prompts, etc. via shot-update
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-update <shotUUID> --direction '{"scene":"..."}' --duration 3
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py shot-update <shotUUID> --direction '{"framing":"...","camera":"..."}' --duration 3
 ```
 
 **Film Director (1-2 credits):**
@@ -299,6 +299,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/nl.py director-persist <threadId> --storyb
 **Reel Coach (1-2 credits):** Uses curl (no CLI wrapper). See the Reel Coach section above.
 
 Labels must match `**01A** (Ns) — Title`. Invalid → `INVALID_STORYBOARD_FORMAT`.
+
+### Gotchas
+
+- **`shot-create --after`**: optional for the first shot, **required once the note has any shot** (else `afterLabel is required`).
+- **`overview --json`**: the `shotId` field is the label, not a UUID — get the UUID from `nl.py shot <noteId> <label>`.
+- **`--dialogue`** is a JSON array, not a string: `[{"speaker":"...","text":"...","type":"dialogue"|"os"|"sfx_cue","emotion"?:"..."}]`.
+- **`--direction`** keys that render: `framing`, `camera`, `blocking`, `keyPose`, `editTiming`, `lighting`, `mood`, `compositeNote`, `notes`.
 
 ### Agent Hold
 
