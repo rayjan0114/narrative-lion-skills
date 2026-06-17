@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 
 from lib.client import graphql
@@ -123,6 +124,47 @@ def get_note(args: list[str], json_mode: bool = False) -> None:
         print(f"\n{preview}")
         if len(md.split("\n")) > 10:
             print(f"\n  ... ({len(md)} chars total)")
+
+
+def get_transcript(args: list[str], json_mode: bool = False) -> None:
+    if not args:
+        print("Usage: nl.py transcript <noteId>", file=sys.stderr)
+        return
+
+    note_id = args[0]
+    gql = """
+    query($noteId: String!) {
+      note(noteId: $noteId) {
+        id title rawTranscript
+      }
+    }"""
+
+    data = graphql(gql, {"noteId": note_id})
+    note = data.get("note")
+
+    if not note:
+        print(f"Note {note_id} not found.", file=sys.stderr)
+        return
+
+    raw = note.get("rawTranscript")
+    if not raw:
+        print(
+            f"No transcript for note {note_id} "
+            "(only video notes have one, and only after transcription).",
+            file=sys.stderr,
+        )
+        return
+
+    transcript = json.loads(raw)
+    segments = transcript.get("segments", [])
+
+    if json_mode:
+        print(as_json(transcript))
+        return
+
+    for seg in segments:
+        sec = int(seg.get("start_ms", 0)) // 1000
+        print(f"[{sec // 60:02d}:{sec % 60:02d}] {seg.get('text', '')}")
 
 
 def create_note(args: list[str], json_mode: bool = False) -> None:

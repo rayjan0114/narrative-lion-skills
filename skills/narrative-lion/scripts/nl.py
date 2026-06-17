@@ -20,6 +20,7 @@ General:
   notes get <noteId>                      Get note details
   notes create --type T --content C       Create note
   notes update <noteId> [--content C]     Update note (--metadata/--file)
+  transcript <noteId>                     Video note transcript (timestamped segments)
   export <noteId> [noteId2 ...]           Export notes as zip
   usage                                   Credit usage
 
@@ -78,6 +79,7 @@ Flags:
 COMMANDS = {
     "search": search.search,
     "fts": search.fts,
+    "transcript": notes.get_transcript,
     "usage": billing.usage,
     "export": export.export_notes,
     "director": chat.director,

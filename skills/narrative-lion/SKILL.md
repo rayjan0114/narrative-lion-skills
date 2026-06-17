@@ -34,6 +34,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 | `nl.py fts <query> [--collection ID]` | Full-text keyword search |
 | `nl.py notes list [--collection ID] [--type T] [--uncategorized] [--starred]` | Browse notes |
 | `nl.py notes get <noteId>` | Note detail |
+| `nl.py transcript <noteId>` | Video note transcript (timestamped segments; `--json` for raw segments) |
 | `nl.py notes create --type T --content C [--file path] [--skip-ai]` | Create note |
 | `nl.py export <noteId> [noteId2 ...]` | Export as Markdown zip |
 | `nl.py usage` | Credit usage |
