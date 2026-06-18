@@ -167,6 +167,36 @@ def get_transcript(args: list[str], json_mode: bool = False) -> None:
         print(f"[{sec // 60:02d}:{sec % 60:02d}] {seg.get('text', '')}")
 
 
+def list_collections(args: list[str], json_mode: bool = False) -> None:
+    gql = """
+    query {
+      collections { id name parentId }
+    }"""
+
+    data = graphql(gql)
+    collections = data.get("collections", [])
+
+    if json_mode:
+        print(as_json(collections))
+        return
+
+    if not collections:
+        print("No collections found.")
+        return
+
+    top = [c for c in collections if not c.get("parentId")]
+    children = {}
+    for c in collections:
+        pid = c.get("parentId")
+        if pid:
+            children.setdefault(pid, []).append(c)
+
+    for c in sorted(top, key=lambda x: x.get("name", "")):
+        print(f"  {c['id']}  {c.get('name', '(untitled)')}")
+        for child in sorted(children.get(c["id"], []), key=lambda x: x.get("name", "")):
+            print(f"    {child['id']}  {child.get('name', '(untitled)')}")
+
+
 def create_note(args: list[str], json_mode: bool = False) -> None:
     note_type = "general"
     content = ""

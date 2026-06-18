@@ -15,6 +15,7 @@ Usage: nl.py <command> [args...] [--json]
 General:
   search <query> [--collection ID]        Semantic search
   fts <query> [--collection ID]           Full-text search
+  collections                             List all collections (folders)
   notes list [--collection ID] [--type T] [--sort S] [--limit N] [--tags T1,T2]
                                           Browse notes (sort: newest|oldest|alpha)
   notes get <noteId>                      Get note details
@@ -79,6 +80,7 @@ Flags:
 COMMANDS = {
     "search": search.search,
     "fts": search.fts,
+    "collections": notes.list_collections,
     "transcript": notes.get_transcript,
     "usage": billing.usage,
     "export": export.export_notes,

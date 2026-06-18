@@ -32,6 +32,7 @@ All API calls use `Authorization: Bearer $NLK_API_KEY` header.
 |---|---|
 | `nl.py search <query> [--collection ID]` | Semantic search |
 | `nl.py fts <query> [--collection ID]` | Full-text keyword search |
+| `nl.py collections` | List all collections (two-level folder tree with IDs) |
 | `nl.py notes list [--collection ID] [--type T] [--uncategorized] [--starred]` | Browse notes |
 | `nl.py notes get <noteId>` | Note detail |
 | `nl.py transcript <noteId>` | Video note transcript (timestamped segments; `--json` for raw segments) |
@@ -89,7 +90,7 @@ All commands support `--json` for raw JSON output.
 
 ### Collections
 
-Two-level folder tree. `notes list --collection ID` scopes by collection.
+Two-level folder tree. Use `collections` to list all folders and get their IDs, then `notes list --collection ID` to scope by collection.
 `notes list --uncategorized` returns notes not in any collection.
 
 ### Chat / SSE
